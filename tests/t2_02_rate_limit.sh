@@ -27,7 +27,7 @@ trap cleanup EXIT
 	KUJO_CRUD_AUTH_TOKEN="$AUTH_TOKEN" \
 	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="2" \
 	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="2" \
-	"$KUJO_BIN" run main.ruff --interpreter >"$LOG_PATH" 2>&1
+	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 

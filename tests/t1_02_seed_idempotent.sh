@@ -40,7 +40,7 @@ start_server() {
 
 	(
 		cd "$ROOT_DIR"
-		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.ruff --interpreter >"$log_path" 2>&1
+		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
 	) &
 	local pid=$!
 	eval "$pid_var=$pid"

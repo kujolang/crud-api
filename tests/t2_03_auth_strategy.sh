@@ -52,7 +52,7 @@ rm -f "$DB_STATIC" "$DB_STATIC-shm" "$DB_STATIC-wal"
 	KUJO_CRUD_DB_PATH="$DB_STATIC" \
 	KUJO_CRUD_AUTH_STRATEGY="static_bearer" \
 	KUJO_CRUD_AUTH_TOKEN="static-token" \
-	"$KUJO_BIN" run main.ruff --interpreter >"$TMP_DIR/t2_03_static.log" 2>&1
+	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_static.log" 2>&1
 ) &
 SERVER_PID_STATIC=$!
 wait_for_health "$PORT_STATIC"
@@ -100,7 +100,7 @@ rm -f "$DB_HEADER" "$DB_HEADER-shm" "$DB_HEADER-wal"
 	KUJO_CRUD_AUTH_STRATEGY="header_value" \
 	KUJO_CRUD_AUTH_HEADER_NAME="X-Auth-Key" \
 	KUJO_CRUD_AUTH_HEADER_VALUE="header-token" \
-	"$KUJO_BIN" run main.ruff --interpreter >"$TMP_DIR/t2_03_header.log" 2>&1
+	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_header.log" 2>&1
 ) &
 SERVER_PID_HEADER=$!
 wait_for_health "$PORT_HEADER"

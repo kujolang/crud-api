@@ -21,7 +21,7 @@ trap cleanup EXIT
 
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.ruff --interpreter >"$LOG_PATH" 2>&1
+	KUJO_CRUD_PORT="$PORT" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 

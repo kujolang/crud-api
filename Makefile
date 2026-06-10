@@ -3,7 +3,7 @@ KUJO_BIN ?= kujo
 .PHONY: run-api run-frontend lint test
 
 run-api:
-	$(KUJO_BIN) run main.ruff --interpreter
+	$(KUJO_BIN) run main.kujo --interpreter
 
 run-frontend:
 	cd frontend && npm run dev

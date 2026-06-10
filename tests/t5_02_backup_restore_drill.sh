@@ -62,7 +62,7 @@ clear_port "$PORT_PRIMARY"
 	KUJO_CRUD_PORT="$PORT_PRIMARY" \
 	KUJO_CRUD_DB_PATH="$DB_PRIMARY" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.ruff --interpreter >"$LOG_PRIMARY" 2>&1
+	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PRIMARY" 2>&1
 ) &
 PRIMARY_PID=$!
 wait_for_health "$PORT_PRIMARY" "$LOG_PRIMARY"
@@ -111,7 +111,7 @@ clear_port "$PORT_RESTORE"
 	KUJO_CRUD_PORT="$PORT_RESTORE" \
 	KUJO_CRUD_DB_PATH="$DB_RESTORE" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.ruff --interpreter >"$LOG_RESTORE" 2>&1
+	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_RESTORE" 2>&1
 ) &
 RESTORE_PID=$!
 wait_for_health "$PORT_RESTORE" "$LOG_RESTORE"

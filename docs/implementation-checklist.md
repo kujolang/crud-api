@@ -35,13 +35,13 @@ Each completed task must satisfy all of the following:
 ## Current State Review (Evidence-Based)
 
 ### Backend
-- Backend logic is modular under `src/`, with `main.ruff` kept as the thin runtime entrypoint.
+- Backend logic is modular under `src/`, with `main.kujo` kept as the thin runtime entrypoint.
 - Seed logic is data-driven and idempotent, so repeated starts do not duplicate demo rows.
-Evidence: ../main.ruff#L82, ../main.ruff#L97, ../main.ruff#L112, ../main.ruff#L127, ../main.ruff#L142
+Evidence: ../main.kujo#L82, ../main.kujo#L97, ../main.kujo#L112, ../main.kujo#L127, ../main.kujo#L142
 - OPTIONS route handlers are registered through a shared helper.
-Evidence: ../main.ruff#L562, ../main.ruff#L566, ../main.ruff#L570, ../main.ruff#L574
+Evidence: ../main.kujo#L562, ../main.kujo#L566, ../main.kujo#L570, ../main.kujo#L574
 - Content-Type validation now uses an explicit comparison pattern with regression coverage.
-Evidence: ../main.ruff#L273
+Evidence: ../main.kujo#L273
 
 ### Frontend
 - API root link is hardcoded instead of using env-derived base URL, which can mislead adopters in non-local environments.
@@ -173,7 +173,7 @@ Completion note:
 Category: Architecture, DX
 
 Implementation expectations:
-- Decompose main.ruff into focused files under src/.
+- Decompose main.kujo into focused files under src/.
 - Keep public behavior unchanged.
 
 Acceptance criteria:

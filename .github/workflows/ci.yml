@@ -115,27 +115,17 @@ jobs:
   backend-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
-    env:
-      KUJO_RUNTIME_REV: 03f5c59d58636a9da28eee5208bddf8f547a93db
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (test script helpers)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20.17.0"
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Kujo runtime
-        run: cargo install --git https://github.com/rufflang/ruff.git --rev "$KUJO_RUNTIME_REV" ruff --force --locked
-
-      - name: Ensure Kujo binary on PATH
-        run: |
-          ln -sf "$HOME/.cargo/bin/ruff" "$HOME/.cargo/bin/kujo"
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Verify Kujo is available
+        run: command -v kujo
 
       - name: Run backend regression suite
         run: make test KUJO_BIN=kujo

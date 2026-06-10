@@ -6,7 +6,7 @@
 
 A server-first showcase/proof app built with Kujo + SQLite, plus a minimal Next.js playground UI.
 
-It boots from `backend/runtime/main.ruff`; there is no standalone CLI wrapper to validate.
+It boots from `main.kujo` at the repo root; there is no standalone CLI wrapper to validate.
 
 This project is intentionally small so you can clone it and extend it quickly.
 
@@ -35,14 +35,14 @@ If you intentionally need a broader listener, set `KUJO_CRUD_API_HOST` explicitl
 
 ```bash
 cd /path/to/kujo-crud-api-showcase
-kujo run main.ruff
+kujo run main.kujo
 ```
 
 Or:
 
 ```bash
 KUJO_BIN=/path/to/kujo
-$KUJO_BIN run main.ruff --interpreter
+$KUJO_BIN run main.kujo --interpreter
 ```
 
 Default API URL: `http://127.0.0.1:4100`
@@ -83,7 +83,7 @@ make test KUJO_BIN=/path/to/kujo
 
 - GitHub Actions workflow: `.github/workflows/ci.yml`
 - Triggered on pushes to `main` and pull requests targeting `main`.
-- CI uses pinned runner (`ubuntu-24.04`), Node (`20.17.0`), and a pinned Kujo runtime git revision for reproducible builds.
+- CI uses pinned runner (`ubuntu-24.04`) and Node (`20.17.0`) for reproducible frontend and backend test runs. The backend suite expects a `kujo` binary on `PATH`.
 - Contribution guide: `CONTRIBUTING.md`
 - Security policy: `SECURITY.md`
 - Release checklist: `RELEASE.md`
@@ -293,12 +293,12 @@ curl -s -X PATCH http://127.0.0.1:4100/items/1 \
 
 ## Project Layout
 
-- `main.ruff` thin API bootstrap entrypoint
-- `src/config.ruff` environment and runtime config
-- `src/db.ruff` SQLite connection, schema, and seed setup
-- `src/validation.ruff` request/auth/field validation helpers
-- `src/handlers.ruff` endpoint business logic
-- `src/server/runtime.ruff` route registration and server runtime
+- `main.kujo` thin API bootstrap entrypoint
+- `src/config.kujo` environment and runtime config
+- `src/db.kujo` SQLite connection, schema, and seed setup
+- `src/validation.kujo` request/auth/field validation helpers
+- `src/handlers.kujo` endpoint business logic
+- `src/server/runtime.kujo` route registration and server runtime
 - `frontend/` Next.js playground that calls the API
 - `data/` default runtime SQLite location
 

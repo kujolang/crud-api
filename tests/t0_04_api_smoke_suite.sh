@@ -26,7 +26,7 @@ start_server() {
 
 	(
 		cd "$ROOT_DIR"
-		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$db_path" KUJO_CRUD_AUTH_TOKEN="$auth_token" "$KUJO_BIN" run main.ruff --interpreter >"$log_path" 2>&1
+		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$db_path" KUJO_CRUD_AUTH_TOKEN="$auth_token" "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
 	) &
 	SERVER_PID=$!
 
