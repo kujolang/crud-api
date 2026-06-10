@@ -1,0 +1,7 @@
+*.db
+*.db-shm
+*.db-wal
+.tmp/
+frontend/node_modules
+frontend/.next
+frontend/.env.local

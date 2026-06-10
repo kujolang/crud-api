@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.17.0"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+  security-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.17.0"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Dependency vulnerability gate
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+      - name: Generate frontend SBOM
+        run: |
+          mkdir -p artifacts
+          cd frontend
+          npx --yes @cyclonedx/cyclonedx-npm --output-file ../artifacts/frontend-sbom.json --output-format json --spec-version 1.5
+          cd ..
+          test -s artifacts/frontend-sbom.json
+
+      - name: Secret pattern gate
+        run: |
+          set +e
+          matches="$(git grep -nE '(AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY-----|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\-_]{35})' -- ':!frontend/package-lock.json' ':!*.md')"
+          exit_code="$?"
+          set -e
+          if [[ "$exit_code" -eq 0 ]]; then
+            echo "Potential secrets detected by pattern gate:"
+            echo "$matches"
+            exit 1
+          fi
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts
+          path: artifacts/
+
+  codeql-analysis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  backend-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      KUJO_RUNTIME_REV: 03f5c59d58636a9da28eee5208bddf8f547a93db
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (test script helpers)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.17.0"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Kujo runtime
+        run: cargo install --git https://github.com/rufflang/ruff.git --rev "$KUJO_RUNTIME_REV" ruff --force --locked
+
+      - name: Ensure Kujo binary on PATH
+        run: |
+          ln -sf "$HOME/.cargo/bin/ruff" "$HOME/.cargo/bin/kujo"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Run backend regression suite
+        run: make test KUJO_BIN=kujo
