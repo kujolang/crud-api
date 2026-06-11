@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Kujo CRUD API Showcase
-  version: 6.0.0
+  version: 1.0.0
   description: |
     CRUD API contract for items and projects, including filtering, search,
     cursor pagination, auth strategy options, and optimistic concurrency.
@@ -28,7 +28,7 @@ paths:
                 default:
                   value:
                     service: Kujo CRUD Starter API
-                    version: 6.0.0
+                    version: 1.0.0
                     resources: [items, projects]
 
   /health:
