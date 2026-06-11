@@ -1,4 +1,4 @@
-# CRUD API Showcase
+# CRUD API
 
 [![Kujo](https://img.shields.io/badge/runtime-Kujo-111827)](https://github.com/kujolang/crud-api)
 [![SQLite](https://img.shields.io/badge/database-SQLite-0f766e)](https://www.sqlite.org/)
