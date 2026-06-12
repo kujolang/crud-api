@@ -22,7 +22,14 @@ trap cleanup EXIT
 
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT" KUJO_CRUD_API_HOST="$API_HOST" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	KUJO_CRUD_PORT="$PORT" \
+		KUJO_CRUD_API_HOST="$API_HOST" \
+		KUJO_CRUD_DB_PATH="$DB_PATH" \
+		KUJO_CRUD_CORS_ORIGIN="*" \
+		KUJO_CRUD_AUTH_STRATEGY="static_bearer" \
+		KUJO_CRUD_AUTH_TOKEN="" \
+		KUJO_CRUD_MAX_BODY_BYTES="65536" \
+		"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -60,10 +67,22 @@ if ! echo "$health_payload" | grep -q '"status":"ok"'; then
 	exit 1
 fi
 
-if ! grep -q "Server: http://$API_HOST:$PORT" "$LOG_PATH"; then
-	echo "Startup banner did not report the actual bind host"
-	cat "$LOG_PATH"
-	exit 1
-fi
+expected_banner_lines=(
+	"Kujo CRUD API Showcase"
+	"Server: http://$API_HOST:$PORT"
+	"Database: $DB_PATH"
+	"CORS origin: *"
+	"Auth required for write routes: false"
+	"Max JSON body bytes: 65536"
+	"Press Ctrl+C to stop"
+)
+
+for line in "${expected_banner_lines[@]}"; do
+	if ! grep -Fxq "$line" "$LOG_PATH"; then
+		echo "Startup banner missing expected line: $line"
+		cat "$LOG_PATH"
+		exit 1
+	fi
+done
 
 echo "t1_01_entrypoint_smoke: PASS"
