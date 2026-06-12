@@ -34,7 +34,7 @@ If you intentionally need a broader listener, set `KUJO_CRUD_API_HOST` explicitl
 ### 1) Run the Kujo API
 
 ```bash
-cd /path/to/kujo-crud-api-showcase
+cd /path/to/crud-api
 kujo run main.kujo
 ```
 
@@ -49,10 +49,30 @@ Default API URL: `http://127.0.0.1:4100`
 
 Default bind host: `127.0.0.1`
 
+Expected startup banner:
+
+```text
+Kujo CRUD API Showcase
+Server: http://127.0.0.1:4100
+Database: data/kujo_crud_api.db
+```
+
+Verify the API:
+
+```bash
+curl -s http://127.0.0.1:4100/health
+```
+
+Fresh database expected shape:
+
+```json
+{"status":"ok","database":"connected","items":5}
+```
+
 ### 2) Run the frontend playground
 
 ```bash
-cd /path/to/kujo-crud-api-showcase/frontend
+cd frontend
 cp .env.example .env.local
 npm install
 npm run dev
@@ -305,9 +325,16 @@ curl -s -X PATCH http://127.0.0.1:4100/items/1 \
 ## API Contract
 
 - OpenAPI contract: `docs/openapi.yaml`
-- Endpoint examples: `docs/api-examples.md`
+- Canonical copyable endpoint examples: `docs/api-examples.md`
 
 Use the contract as the source of truth for integration clients. The validation script `tests/t4_03_contract_validation.sh` verifies that documented endpoints and live API behavior stay aligned.
+
+## Agent And Contributor Notes
+
+- Canonical examples live in `README.md` and `docs/api-examples.md`.
+- Tests under `tests/` are executable contracts, not style examples to shorten aggressively.
+- `docs/openapi.yaml` is generated-style API contract material; update it for endpoint behavior changes, but exclude it from readability-only sweeps.
+- Exclude generated/bulk paths from broad searches unless they are the target: `frontend/package-lock.json`, `frontend/node_modules/`, `frontend/.next/`, `.tmp/`, and `data/*.db*`.
 
 ## Implementation Checklist
 

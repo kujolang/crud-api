@@ -6,6 +6,17 @@
 - Prefer one logical checklist item per commit.
 - Keep tests and docs updated in the same change.
 
+## Agent And Example Hygiene
+
+- Read `README.md`, this file, and `docs/implementation-checklist.md` before changing behavior.
+- Prioritize copyable examples over tests: examples should model the most token-efficient idioms we want agents to imitate.
+- Treat `README.md` and `docs/api-examples.md` as canonical examples.
+- Treat `tests/` as executable contract coverage; keep explicit output there when it makes failures clearer.
+- Treat `docs/openapi.yaml` as the API contract, not a prose example.
+- Exclude generated/bulk paths from broad readability sweeps unless the task explicitly targets them: `frontend/package-lock.json`, `frontend/node_modules/`, `frontend/.next/`, `.tmp/`, and `data/*.db*`.
+- Prefer `rg --glob '!frontend/package-lock.json' --glob '!frontend/node_modules/**' --glob '!frontend/.next/**' --glob '!.tmp/**' --glob '!data/*.db*' ...` for broad searches.
+- Clearly label any stale, legacy, generated, or expected-fail examples that remain in docs.
+
 ## Required Local Validation
 
 Before opening a pull request, run:
