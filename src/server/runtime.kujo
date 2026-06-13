@@ -21,24 +21,46 @@ func print_lines(lines) {
 	}
 }
 
+func fail_startup(message) {
+	print(message)
+	exit(1)
+}
+
+func require_write_access(req) {
+	rate_limit_result := check_write_rate_limit(req)
+	if !rate_limit_result["ok"] {
+		log_security_event("security.rate_limit_denied", "Too many write requests")
+		limited_response := api_json(429, {
+			"error": rate_limit_result["error"],
+			"retry_after_seconds": rate_limit_result["retry_after"]
+		})
+		return {"ok": false, "response": set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))}
+	}
+
+	auth_result := require_write_auth(req)
+	if !auth_result["ok"] {
+		log_security_event("security.auth_denied", auth_result["error"])
+		return {"ok": false, "response": api_json(401, {"error": auth_result["error"]})}
+	}
+
+	return {"ok": true}
+}
+
 if SECURITY_PROFILE_IS_PRODUCTION {
 	if AUTH_STRATEGY == "static_bearer" {
 		if len(trim(AUTH_TOKEN)) == 0 {
-			print("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN is required for static_bearer strategy when KUJO_CRUD_SECURITY_PROFILE=production")
-			exit(1)
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN is required for static_bearer strategy when KUJO_CRUD_SECURITY_PROFILE=production")
 		}
 	}
 
 	if AUTH_STRATEGY == "header_value" {
 		if len(trim(AUTH_HEADER_VALUE)) == 0 {
-			print("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE is required for header_value strategy when KUJO_CRUD_SECURITY_PROFILE=production")
-			exit(1)
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE is required for header_value strategy when KUJO_CRUD_SECURITY_PROFILE=production")
 		}
 	}
 
 	if CORS_ALLOW_ORIGIN == "*" {
-		print("Invalid production security configuration: KUJO_CRUD_CORS_ORIGIN cannot be * when KUJO_CRUD_SECURITY_PROFILE=production")
-		exit(1)
+		fail_startup("Invalid production security configuration: KUJO_CRUD_CORS_ORIGIN cannot be * when KUJO_CRUD_SECURITY_PROFILE=production")
 	}
 }
 
@@ -136,20 +158,9 @@ server := server.route("GET", "/projects/:id/items", func(req) {
 server := server.route("POST", "/projects", func(req) {
 	begin_request(req)
 	log_request_start()
-	rate_limit_result := check_write_rate_limit(req)
-	if !rate_limit_result["ok"] {
-		log_security_event("security.rate_limit_denied", "Too many write requests")
-		limited_response := api_json(429, {
-			"error": rate_limit_result["error"],
-			"retry_after_seconds": rate_limit_result["retry_after"]
-		})
-		return set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))
-	}
-
-	auth_result := require_write_auth(req)
-	if !auth_result["ok"] {
-		log_security_event("security.auth_denied", auth_result["error"])
-		return api_json(401, {"error": auth_result["error"]})
+	write_access := require_write_access(req)
+	if !write_access["ok"] {
+		return write_access["response"]
 	}
 
 	return create_project(req)
@@ -158,20 +169,9 @@ server := server.route("POST", "/projects", func(req) {
 server := server.route("POST", "/items", func(req) {
 	begin_request(req)
 	log_request_start()
-	rate_limit_result := check_write_rate_limit(req)
-	if !rate_limit_result["ok"] {
-		log_security_event("security.rate_limit_denied", "Too many write requests")
-		limited_response := api_json(429, {
-			"error": rate_limit_result["error"],
-			"retry_after_seconds": rate_limit_result["retry_after"]
-		})
-		return set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))
-	}
-
-	auth_result := require_write_auth(req)
-	if !auth_result["ok"] {
-		log_security_event("security.auth_denied", auth_result["error"])
-		return api_json(401, {"error": auth_result["error"]})
+	write_access := require_write_access(req)
+	if !write_access["ok"] {
+		return write_access["response"]
 	}
 
 	return create_item(req)
@@ -186,20 +186,9 @@ server := server.route("GET", "/items/:id", func(req) {
 server := server.route("PUT", "/items/:id", func(req) {
 	begin_request(req)
 	log_request_start()
-	rate_limit_result := check_write_rate_limit(req)
-	if !rate_limit_result["ok"] {
-		log_security_event("security.rate_limit_denied", "Too many write requests")
-		limited_response := api_json(429, {
-			"error": rate_limit_result["error"],
-			"retry_after_seconds": rate_limit_result["retry_after"]
-		})
-		return set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))
-	}
-
-	auth_result := require_write_auth(req)
-	if !auth_result["ok"] {
-		log_security_event("security.auth_denied", auth_result["error"])
-		return api_json(401, {"error": auth_result["error"]})
+	write_access := require_write_access(req)
+	if !write_access["ok"] {
+		return write_access["response"]
 	}
 
 	return update_item(req, false)
@@ -208,20 +197,9 @@ server := server.route("PUT", "/items/:id", func(req) {
 server := server.route("PATCH", "/items/:id", func(req) {
 	begin_request(req)
 	log_request_start()
-	rate_limit_result := check_write_rate_limit(req)
-	if !rate_limit_result["ok"] {
-		log_security_event("security.rate_limit_denied", "Too many write requests")
-		limited_response := api_json(429, {
-			"error": rate_limit_result["error"],
-			"retry_after_seconds": rate_limit_result["retry_after"]
-		})
-		return set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))
-	}
-
-	auth_result := require_write_auth(req)
-	if !auth_result["ok"] {
-		log_security_event("security.auth_denied", auth_result["error"])
-		return api_json(401, {"error": auth_result["error"]})
+	write_access := require_write_access(req)
+	if !write_access["ok"] {
+		return write_access["response"]
 	}
 
 	return update_item(req, true)
@@ -230,20 +208,9 @@ server := server.route("PATCH", "/items/:id", func(req) {
 server := server.route("DELETE", "/items/:id", func(req) {
 	begin_request(req)
 	log_request_start()
-	rate_limit_result := check_write_rate_limit(req)
-	if !rate_limit_result["ok"] {
-		log_security_event("security.rate_limit_denied", "Too many write requests")
-		limited_response := api_json(429, {
-			"error": rate_limit_result["error"],
-			"retry_after_seconds": rate_limit_result["retry_after"]
-		})
-		return set_header(limited_response, "Retry-After", to_string(rate_limit_result["retry_after"]))
-	}
-
-	auth_result := require_write_auth(req)
-	if !auth_result["ok"] {
-		log_security_event("security.auth_denied", auth_result["error"])
-		return api_json(401, {"error": auth_result["error"]})
+	write_access := require_write_access(req)
+	if !write_access["ok"] {
+		return write_access["response"]
 	}
 
 	return delete_item(req)

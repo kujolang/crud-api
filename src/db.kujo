@@ -1,9 +1,19 @@
 from src.config import DB_PATH
 
+func fatal(message) {
+	print(message)
+	exit(1)
+}
+
+func print_seed_count(label, count) {
+	if count > 0 {
+		print(label + ": " + to_string(count))
+	}
+}
+
 export db := db_connect("sqlite", DB_PATH)
 if type(db) == "error" {
-	print("Failed to connect to SQLite database: " + to_string(db))
-	exit(1)
+	fatal("Failed to connect to SQLite database: " + to_string(db))
 }
 
 export func db_query_safe(sql, params) {
@@ -33,8 +43,7 @@ pragma_steps := [
 for sql in pragma_steps {
 	pragma_result := db_query_safe(sql, [])
 	if !pragma_result["ok"] {
-		print("Database PRAGMA setup failed: " + pragma_result["error"])
-		exit(1)
+		fatal("Database PRAGMA setup failed: " + pragma_result["error"])
 	}
 }
 
@@ -49,15 +58,13 @@ schema_steps := [
 for step in schema_steps {
 	init_result := db_execute_safe(step["sql"], step["params"])
 	if !init_result["ok"] {
-		print("Database schema setup failed: " + init_result["error"])
-		exit(1)
+		fatal("Database schema setup failed: " + init_result["error"])
 	}
 }
 
 table_info_result := db_query_safe("PRAGMA table_info(items)", [])
 if !table_info_result["ok"] {
-	print("Database schema introspection failed: " + table_info_result["error"])
-	exit(1)
+	fatal("Database schema introspection failed: " + table_info_result["error"])
 }
 
 has_project_id_column := false
@@ -70,15 +77,13 @@ for column_info in table_info_result["rows"] {
 if !has_project_id_column {
 	alter_result := db_execute_safe("ALTER TABLE items ADD COLUMN project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL", [])
 	if !alter_result["ok"] {
-		print("Database schema migration failed: " + alter_result["error"])
-		exit(1)
+		fatal("Database schema migration failed: " + alter_result["error"])
 	}
 }
 
 project_index_result := db_execute_safe("CREATE INDEX IF NOT EXISTS idx_items_project_id ON items(project_id)", [])
 if !project_index_result["ok"] {
-	print("Database index setup failed: " + project_index_result["error"])
-	exit(1)
+	fatal("Database index setup failed: " + project_index_result["error"])
 }
 
 seeded_items_count := 0
@@ -91,18 +96,17 @@ project_seed_fixtures := [
 ]
 
 for project_fixture in project_seed_fixtures {
-	project_existing := db_query(db, "SELECT COUNT(*) AS total FROM projects WHERE name = ?", [project_fixture["name"]])
-	if type(project_existing) == "error" {
-		print("Project seed check failed: " + to_string(project_existing))
-		exit(1)
+	project_existing_result := db_query_safe("SELECT COUNT(*) AS total FROM projects WHERE name = ?", [project_fixture["name"]])
+	if !project_existing_result["ok"] {
+		fatal("Project seed check failed: " + project_existing_result["error"])
 	}
 
+	project_existing := project_existing_result["rows"]
 	if len(project_existing) > 0 && project_existing[0]["total"] == 0 {
 		project_stamp := now()
-		project_insert := db_execute(db, "INSERT INTO projects (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)", [project_fixture["name"], project_fixture["description"], project_stamp, project_stamp])
-		if type(project_insert) == "error" {
-			print("Project sample data seed failed: " + to_string(project_insert))
-			exit(1)
+		project_insert := db_execute_safe("INSERT INTO projects (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)", [project_fixture["name"], project_fixture["description"], project_stamp, project_stamp])
+		if !project_insert["ok"] {
+			fatal("Project sample data seed failed: " + project_insert["error"])
 		}
 		seeded_projects_count := seeded_projects_count + 1
 	}
@@ -117,40 +121,34 @@ seed_fixtures := [
 ]
 
 for fixture in seed_fixtures {
-	seed_existing := db_query(db, "SELECT COUNT(*) AS total FROM items WHERE title = ?", [fixture["title"]])
-	if type(seed_existing) == "error" {
-		print("Database seed check failed: " + to_string(seed_existing))
-		exit(1)
+	seed_existing_result := db_query_safe("SELECT COUNT(*) AS total FROM items WHERE title = ?", [fixture["title"]])
+	if !seed_existing_result["ok"] {
+		fatal("Database seed check failed: " + seed_existing_result["error"])
 	}
 
+	seed_existing := seed_existing_result["rows"]
 	if len(seed_existing) > 0 && seed_existing[0]["total"] == 0 {
 		project_id := null
 		if has_key(fixture, "project_name") {
-			project_lookup := db_query(db, "SELECT id FROM projects WHERE name = ? LIMIT 1", [fixture["project_name"]])
-			if type(project_lookup) == "error" {
-				print("Project lookup for seed fixture failed: " + to_string(project_lookup))
-				exit(1)
+			project_lookup_result := db_query_safe("SELECT id FROM projects WHERE name = ? LIMIT 1", [fixture["project_name"]])
+			if !project_lookup_result["ok"] {
+				fatal("Project lookup for seed fixture failed: " + project_lookup_result["error"])
 			}
 
+			project_lookup := project_lookup_result["rows"]
 			if len(project_lookup) > 0 {
 				project_id := project_lookup[0]["id"]
 			}
 		}
 
 		seed_stamp := now()
-		seed_insert := db_execute(db, "INSERT INTO items (title, content, status, created_at, updated_at, project_id) VALUES (?, ?, ?, ?, ?, ?)", [fixture["title"], fixture["content"], fixture["status"], seed_stamp, seed_stamp, project_id])
-		if type(seed_insert) == "error" {
-			print("Sample data seed failed: " + to_string(seed_insert))
-			exit(1)
+		seed_insert := db_execute_safe("INSERT INTO items (title, content, status, created_at, updated_at, project_id) VALUES (?, ?, ?, ?, ?, ?)", [fixture["title"], fixture["content"], fixture["status"], seed_stamp, seed_stamp, project_id])
+		if !seed_insert["ok"] {
+			fatal("Sample data seed failed: " + seed_insert["error"])
 		}
 		seeded_items_count := seeded_items_count + 1
 	}
 }
 
-if seeded_projects_count > 0 {
-	print("Ensured project content. Inserted projects: " + to_string(seeded_projects_count))
-}
-
-if seeded_items_count > 0 {
-	print("Ensured demo content. Inserted items: " + to_string(seeded_items_count))
-}
+print_seed_count("Ensured project content. Inserted projects", seeded_projects_count)
+print_seed_count("Ensured demo content. Inserted items", seeded_items_count)
