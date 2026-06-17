@@ -11,6 +11,7 @@
 - Read `README.md`, this file, and `docs/implementation-checklist.md` before changing behavior.
 - Prioritize copyable examples over tests: examples should model the most token-efficient idioms we want agents to imitate.
 - Treat `README.md` and `docs/api-examples.md` as canonical examples.
+- In Kujo source and examples, prefer tiny local helpers for repeated output, fatal exits, and route guard blocks once repetition distracts from the feature being shown.
 - Treat `tests/` as executable contract coverage; keep explicit output there when it makes failures clearer.
 - Treat `docs/openapi.yaml` as the API contract, not a prose example.
 - Exclude generated/bulk paths from broad readability sweeps unless the task explicitly targets them: `frontend/package-lock.json`, `frontend/node_modules/`, `frontend/.next/`, `.tmp/`, and `data/*.db*`.
