@@ -30,6 +30,7 @@ paths:
                     service: Kujo CRUD Starter API
                     version: 1.0.0
                     resources: [items, projects]
+                    trust_proxy_headers: false
 
   /health:
     get:
@@ -120,6 +121,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/DuplicateConflict"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -431,6 +434,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ConflictError"
+    DuplicateConflict:
+      description: Duplicate resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     PreconditionRequired:
       description: Missing concurrency precondition
       content:
@@ -463,7 +472,7 @@ components:
       name: X-API-Key
       description: |
         Header-value strategy. Include the configured auth header and value.
-        Defaults to `X-API-Key` and can be overridden by `KUJO_CRUD_AUTH_HEADER`.
+        Defaults to `X-API-Key` and can be overridden by `KUJO_CRUD_AUTH_HEADER_NAME`.
 
   schemas:
     Health:

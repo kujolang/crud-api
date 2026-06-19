@@ -84,4 +84,83 @@ if [[ "$status_4" != "201" ]]; then
 	exit 1
 fi
 
+kill "$SERVER_PID" >/dev/null 2>&1 || true
+wait "$SERVER_PID" >/dev/null 2>&1 || true
+SERVER_PID=""
+
+PORT_PROXY_DEFAULT="4143"
+DB_PROXY_DEFAULT="$TMP_DIR/t2_02_proxy_default.db"
+rm -f "$DB_PROXY_DEFAULT" "$DB_PROXY_DEFAULT-shm" "$DB_PROXY_DEFAULT-wal"
+(
+	cd "$ROOT_DIR"
+	KUJO_CRUD_PORT="$PORT_PROXY_DEFAULT" \
+	KUJO_CRUD_DB_PATH="$DB_PROXY_DEFAULT" \
+	KUJO_CRUD_AUTH_TOKEN="" \
+	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="1" \
+	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="30" \
+	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_default.log" 2>&1
+) &
+SERVER_PID=$!
+
+for _ in $(seq 1 40); do
+	if curl -s "http://127.0.0.1:$PORT_PROXY_DEFAULT/health" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 0.25
+done
+
+proxy_default_1=$(curl -s -o "$TMP_DIR/t2_02_proxy_default_1.body" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT_PROXY_DEFAULT/items" \
+	-H "X-Forwarded-For: 198.51.100.10" \
+	-H "Content-Type: application/json" \
+	-d '{"title":"proxy-default-1","content":"payload","status":"draft"}')
+proxy_default_2=$(curl -s -o "$TMP_DIR/t2_02_proxy_default_2.body" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT_PROXY_DEFAULT/items" \
+	-H "X-Forwarded-For: 198.51.100.11" \
+	-H "Content-Type: application/json" \
+	-d '{"title":"proxy-default-2","content":"payload","status":"draft"}')
+
+if [[ "$proxy_default_1" != "201" || "$proxy_default_2" != "429" ]]; then
+	echo "Expected default proxy-header mode to ignore spoofed X-Forwarded-For, got $proxy_default_1 and $proxy_default_2"
+	exit 1
+fi
+
+kill "$SERVER_PID" >/dev/null 2>&1 || true
+wait "$SERVER_PID" >/dev/null 2>&1 || true
+SERVER_PID=""
+
+PORT_PROXY_TRUSTED="4144"
+DB_PROXY_TRUSTED="$TMP_DIR/t2_02_proxy_trusted.db"
+rm -f "$DB_PROXY_TRUSTED" "$DB_PROXY_TRUSTED-shm" "$DB_PROXY_TRUSTED-wal"
+(
+	cd "$ROOT_DIR"
+	KUJO_CRUD_PORT="$PORT_PROXY_TRUSTED" \
+	KUJO_CRUD_DB_PATH="$DB_PROXY_TRUSTED" \
+	KUJO_CRUD_AUTH_TOKEN="" \
+	KUJO_CRUD_TRUST_PROXY_HEADERS="true" \
+	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="1" \
+	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="30" \
+	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_trusted.log" 2>&1
+) &
+SERVER_PID=$!
+
+for _ in $(seq 1 40); do
+	if curl -s "http://127.0.0.1:$PORT_PROXY_TRUSTED/health" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 0.25
+done
+
+proxy_trusted_1=$(curl -s -o "$TMP_DIR/t2_02_proxy_trusted_1.body" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT_PROXY_TRUSTED/items" \
+	-H "X-Forwarded-For: 198.51.100.10" \
+	-H "Content-Type: application/json" \
+	-d '{"title":"proxy-trusted-1","content":"payload","status":"draft"}')
+proxy_trusted_2=$(curl -s -o "$TMP_DIR/t2_02_proxy_trusted_2.body" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT_PROXY_TRUSTED/items" \
+	-H "X-Forwarded-For: 198.51.100.11" \
+	-H "Content-Type: application/json" \
+	-d '{"title":"proxy-trusted-2","content":"payload","status":"draft"}')
+
+if [[ "$proxy_trusted_1" != "201" || "$proxy_trusted_2" != "201" ]]; then
+	echo "Expected trusted proxy-header mode to rate limit by X-Forwarded-For, got $proxy_trusted_1 and $proxy_trusted_2"
+	exit 1
+fi
+
 echo "t2_02_rate_limit: PASS"

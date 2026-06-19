@@ -52,7 +52,11 @@ schema_steps := [
 	{"sql": "CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)", "params": []},
 	{"sql": "CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)", "params": []},
 	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_status ON items(status)", "params": []},
-	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_updated_at ON items(updated_at)", "params": []}
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_updated_at ON items(updated_at)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_status_id ON items(status, id DESC)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_created_at_id ON items(created_at, id DESC)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_updated_at_id ON items(updated_at, id DESC)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_title_id ON items(title, id DESC)", "params": []}
 ]
 
 for step in schema_steps {
@@ -84,6 +88,19 @@ if !has_project_id_column {
 project_index_result := db_execute_safe("CREATE INDEX IF NOT EXISTS idx_items_project_id ON items(project_id)", [])
 if !project_index_result["ok"] {
 	fatal("Database index setup failed: " + project_index_result["error"])
+}
+
+project_sort_index_steps := [
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_project_id_id ON items(project_id, id DESC)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_project_status_id ON items(project_id, status, id DESC)", "params": []},
+	{"sql": "CREATE INDEX IF NOT EXISTS idx_items_project_updated_at_id ON items(project_id, updated_at, id DESC)", "params": []}
+]
+
+for step in project_sort_index_steps {
+	index_result := db_execute_safe(step["sql"], step["params"])
+	if !index_result["ok"] {
+		fatal("Database index setup failed: " + index_result["error"])
+	}
 }
 
 seeded_items_count := 0

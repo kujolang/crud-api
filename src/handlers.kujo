@@ -571,6 +571,14 @@ export func create_project(req) {
 		return api_json(400, {"error": "description cannot exceed 2000 characters"})
 	}
 
+	existing_project_result := db_query_safe("SELECT id FROM projects WHERE name = ? LIMIT 1", [name])
+	if !existing_project_result["ok"] {
+		return api_json(500, {"error": "Database query failed"})
+	}
+	if len(existing_project_result["rows"]) > 0 {
+		return api_json(409, {"error": "project name already exists"})
+	}
+
 	timestamp := now()
 	insert_result := db_execute_safe("INSERT INTO projects (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)", [name, description, timestamp, timestamp])
 	if !insert_result["ok"] {

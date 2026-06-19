@@ -34,6 +34,14 @@ curl -s -X POST "$API/projects" \
   -d '{"name":"Release Plan","description":"Tracks upcoming release tasks."}'
 ```
 
+Duplicate project names return `409`:
+
+```bash
+curl -s -X POST "$API/projects" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Documentation","description":"Already seeded."}'
+```
+
 ```bash
 curl -s "$API/projects/1"
 ```

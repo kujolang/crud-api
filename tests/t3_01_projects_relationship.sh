@@ -44,6 +44,21 @@ if [[ "$projects_count" -lt 1 ]]; then
 fi
 
 first_project_id=$(node -e 'const fs=require("fs");const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!o.projects||o.projects.length===0){process.exit(1)}process.stdout.write(String(o.projects[0].id));' "$TMP_DIR/t3_01_projects.json")
+first_project_name=$(node -e 'const fs=require("fs");const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!o.projects||o.projects.length===0){process.exit(1)}process.stdout.write(String(o.projects[0].name));' "$TMP_DIR/t3_01_projects.json")
+
+duplicate_project_status=$(curl -sS -o "$TMP_DIR/t3_01_duplicate_project.json" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT/projects" \
+	-H "Content-Type: application/json" \
+	-d '{"name":"'"$first_project_name"'","description":"Duplicate should conflict."}')
+if [[ "$duplicate_project_status" != "409" ]]; then
+	echo "Expected duplicate project name to return 409, got $duplicate_project_status"
+	exit 1
+fi
+
+if ! grep -q "project name already exists" "$TMP_DIR/t3_01_duplicate_project.json"; then
+	echo "Expected duplicate project response to include conflict details"
+	cat "$TMP_DIR/t3_01_duplicate_project.json"
+	exit 1
+fi
 
 create_status=$(curl -sS -o "$TMP_DIR/t3_01_create_item.json" -w "%{http_code}" -X POST "http://127.0.0.1:$PORT/items" \
 	-H "Content-Type: application/json" \

@@ -1,3 +1,4 @@
+from src.config import TRUST_PROXY_HEADERS
 from src.validation import get_header
 
 func parse_positive_int_env(var_name, default_value) {
@@ -37,21 +38,15 @@ func unix_seconds_now() {
 }
 
 func rate_limit_key(req) {
-	auth_header := trim(get_header(req, "Authorization"))
-	if len(auth_header) == 0 {
-		auth_header := trim(get_header(req, "authorization"))
-	}
-	if len(auth_header) > 0 {
-		return "token:" + auth_header
-	}
-
-	forwarded := trim(get_header(req, "X-Forwarded-For"))
-	if len(forwarded) == 0 {
-		forwarded := trim(get_header(req, "x-forwarded-for"))
-	}
-	if len(forwarded) > 0 {
-		parts := split(forwarded, ",")
-		return "ip:" + trim(parts[0])
+	if TRUST_PROXY_HEADERS {
+		forwarded := trim(get_header(req, "X-Forwarded-For"))
+		if len(forwarded) == 0 {
+			forwarded := trim(get_header(req, "x-forwarded-for"))
+		}
+		if len(forwarded) > 0 {
+			parts := split(forwarded, ",")
+			return "proxy-ip:" + trim(parts[0])
+		}
 	}
 
 	if has_key_true(req, "ip") {

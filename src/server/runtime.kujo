@@ -1,4 +1,4 @@
-from src.config import API_HOST, API_PORT, DB_PATH, CORS_ALLOW_ORIGIN, AUTH_TOKEN, AUTH_STRATEGY, AUTH_HEADER_VALUE, MAX_BODY_BYTES, SECURITY_PROFILE, SECURITY_PROFILE_IS_PRODUCTION
+from src.config import API_HOST, API_PORT, DB_PATH, CORS_ALLOW_ORIGIN, AUTH_TOKEN, AUTH_STRATEGY, AUTH_HEADER_VALUE, MAX_BODY_BYTES, MIN_AUTH_SECRET_LENGTH, TRUST_PROXY_HEADERS, SECURITY_PROFILE, SECURITY_PROFILE_IS_PRODUCTION
 from src.db import db_query_safe
 from src.handlers import list_items, create_item, get_one_item, update_item, delete_item, list_projects, get_one_project, create_project, list_project_items
 from src.logging import log_request_start, log_security_event
@@ -51,11 +51,17 @@ if SECURITY_PROFILE_IS_PRODUCTION {
 		if len(trim(AUTH_TOKEN)) == 0 {
 			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN is required for static_bearer strategy when KUJO_CRUD_SECURITY_PROFILE=production")
 		}
+		if len(trim(AUTH_TOKEN)) < MIN_AUTH_SECRET_LENGTH {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN must be at least " + to_string(MIN_AUTH_SECRET_LENGTH) + " characters when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
 	}
 
 	if AUTH_STRATEGY == "header_value" {
 		if len(trim(AUTH_HEADER_VALUE)) == 0 {
 			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE is required for header_value strategy when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
+		if len(trim(AUTH_HEADER_VALUE)) < MIN_AUTH_SECRET_LENGTH {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE must be at least " + to_string(MIN_AUTH_SECRET_LENGTH) + " characters when KUJO_CRUD_SECURITY_PROFILE=production")
 		}
 	}
 
@@ -89,6 +95,7 @@ server := server.route("GET", "/", func(req) {
 		"auth_enabled": auth_enabled,
 		"cors_origin": CORS_ALLOW_ORIGIN,
 		"max_body_bytes": MAX_BODY_BYTES,
+		"trust_proxy_headers": TRUST_PROXY_HEADERS,
 		"resources": ["items", "projects"],
 		"status_values": ["draft", "published", "archived"],
 		"features": [
