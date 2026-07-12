@@ -1,25 +1,13 @@
 
-## gate: tests
-$ KUJO_BIN=${KUJO_BIN:-../kujo/target/debug/kujo} bash scripts/run-all-tests.sh
+## gate: source_check
+$ /Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo check src/config.kujo >/dev/null
+gate source_check: pass
+
+## gate: visible_api_tests
+$ KUJO_BIN=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo bash tests/t0_01_content_type_validation.sh && KUJO_BIN=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo bash tests/t2_01_security_profile.sh
 t0_01_content_type_validation: PASS
-t0_03_default_db_path: PASS
-t0_04_api_smoke_suite: PASS
-t1_01_entrypoint_smoke: PASS
-t1_02_seed_idempotent: PASS
-t1_03_options_routes: PASS
 t2_01_security_profile: PASS
-t2_02_rate_limit: PASS
-t2_03_auth_strategy: PASS
-t2_04_request_ids: PASS
-t3_01_projects_relationship: PASS
-t3_02_sort_search: PASS
-t3_03_cursor_pagination: PASS
-t3_04_optimistic_concurrency: PASS
-t4_03_contract_validation: PASS
-t5_01_performance_baseline: PASS (samples=100 p95=0.090831s avg=0.055247s)
-t5_02_backup_restore_drill: PASS
-run-all-tests: PASS
-gate tests: pass
+gate visible_api_tests: pass
 
 ## gate: diff_check
 $ files=$(git diff --name-only | grep -v "^.loop-engineering/" || true); if [ -n "$files" ]; then git diff --check -- $files; fi

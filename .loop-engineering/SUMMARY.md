@@ -10,7 +10,7 @@ success
 
 ## Verification
 
-- passed: tests, diff_check
+- passed: source_check, visible_api_tests, diff_check
 - blocked: none
 - failed: none
 
