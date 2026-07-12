@@ -16,16 +16,16 @@ func parse_int_env(var_name, default_value) {
 	return default_value
 }
 
-func parse_bool_env(var_name, default_value) {
-	raw := to_lower(trim(env_or(var_name, "")))
-	if raw == "1" || raw == "true" || raw == "yes" || raw == "on" {
-		return true
+func env_bool_default(var_name, default_value) {
+	raw := env(var_name)
+	if type(raw) == "null" || trim(to_string(raw)) == "" {
+		return default_value
 	}
-	if raw == "0" || raw == "false" || raw == "no" || raw == "off" {
-		return false
+	try {
+		return env_bool(var_name)
+	} except err {
+		return default_value
 	}
-
-	return default_value
 }
 
 export API_PORT := parse_int_env("KUJO_CRUD_PORT", DEFAULT_PORT)
@@ -52,7 +52,7 @@ export AUTH_HEADER_NAME := trim(env_or("KUJO_CRUD_AUTH_HEADER_NAME", "X-API-Key"
 export AUTH_HEADER_VALUE := env_or("KUJO_CRUD_AUTH_HEADER_VALUE", "")
 export MAX_BODY_BYTES := parse_int_env("KUJO_CRUD_MAX_BODY_BYTES", DEFAULT_MAX_BODY_BYTES)
 export MIN_AUTH_SECRET_LENGTH := parse_int_env("KUJO_CRUD_MIN_AUTH_SECRET_LENGTH", DEFAULT_MIN_AUTH_SECRET_LENGTH)
-export TRUST_PROXY_HEADERS := parse_bool_env("KUJO_CRUD_TRUST_PROXY_HEADERS", false)
+export TRUST_PROXY_HEADERS := env_bool_default("KUJO_CRUD_TRUST_PROXY_HEADERS", false)
 
 security_profile_raw := to_lower(trim(env_or("KUJO_CRUD_SECURITY_PROFILE", "demo")))
 if security_profile_raw != "demo" && security_profile_raw != "production" {
