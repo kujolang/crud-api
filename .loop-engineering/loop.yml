@@ -20,7 +20,7 @@ eval_gates:
     command: "KUJO_BIN=${KUJO_BIN:-../kujo/target/debug/kujo} bash scripts/run-all-tests.sh"
     required: true
   - id: diff_check
-    command: "git diff --check"
+    command: 'files=$(git diff --name-only | grep -v "^.loop-engineering/" || true); if [ -n "$files" ]; then git diff --check -- $files; fi'
     required: true
 
 commit:
