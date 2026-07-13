@@ -3,6 +3,6 @@
 blockers:
   - id: typed-env-default-contract
     command: "env_int/env_float/env_bool"
-    evidence: "Native typed environment accessors do not provide the local missing/blank/invalid fallback semantics required by CRUD configuration; the migration therefore uses one small native-backed default adapter."
+    evidence: "Kujo now supports env_bool(name, default) for missing/invalid values, and CRUD has migrated its pure boolean adapter. The remaining integer normalization still enforces positive bounds beyond the native default contract."
     status: needs-contract-first
-    next_action: "Add optional/default typed environment primitives or document their fallback contract, then remove the adapter and add invalid-value compatibility tests."
+    next_action: "Define a documented bounded-integer normalization contract, then migrate only paths covered by compatibility fixtures."
