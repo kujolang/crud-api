@@ -14,7 +14,7 @@ Validate that a backup copy of the SQLite database can be restored and served by
 This repository includes an automated restore drill:
 
 ```bash
-KUJO_BIN=/path/to/kujo bash tests/t5_02_backup_restore_drill.sh
+KUJO_BIN=kujo bash tests/t5_02_backup_restore_drill.sh
 ```
 
 The drill performs these steps:

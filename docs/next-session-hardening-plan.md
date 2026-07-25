@@ -93,8 +93,8 @@ Acceptance criteria:
 ## Validation Commands For Future Sessions
 
 ```bash
-make test KUJO_BIN=/path/to/kujo
-KUJO_BIN=/path/to/kujo ./scripts/run-smoke-tests.sh
+make test KUJO_BIN=kujo
+KUJO_BIN=kujo ./scripts/run-smoke-tests.sh
 ./scripts/quality-check.sh
 cd frontend && npm run build
 ```

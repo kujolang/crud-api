@@ -25,8 +25,8 @@ Use the Kujo runtime expected by this repository. Most repos support one of
 these environment variables:
 
 ```bash
-export KUJO_BIN=/path/to/kujo
-export KUJO=/path/to/kujo
+export KUJO_BIN=kujo
+export KUJO=kujo
 ```
 
 Primary backend entry point:
@@ -114,11 +114,11 @@ the repo.
 Required CRUD API validation:
 
 ```bash
-make test KUJO_BIN=/path/to/kujo
+make test KUJO_BIN=kujo
 cd frontend && npm run lint && npm run build
 cd frontend && npm audit
-KUJO_BIN=/path/to/kujo bash tests/t5_01_performance_baseline.sh
-KUJO_BIN=/path/to/kujo bash tests/t5_02_backup_restore_drill.sh
+KUJO_BIN=kujo bash tests/t5_01_performance_baseline.sh
+KUJO_BIN=kujo bash tests/t5_02_backup_restore_drill.sh
 ```
 
 Keep contract validation passing when endpoint behavior changes:

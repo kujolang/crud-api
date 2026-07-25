@@ -42,7 +42,7 @@ kujo run main.kujo
 Or:
 
 ```bash
-KUJO_BIN=/path/to/kujo
+KUJO_BIN=kujo
 $KUJO_BIN run main.kujo --interpreter
 ```
 
@@ -97,7 +97,7 @@ make test
 Set a custom runtime binary when needed:
 
 ```bash
-make test KUJO_BIN=/path/to/kujo
+make test KUJO_BIN=kujo
 ```
 
 ## CI And Contribution Workflow
@@ -154,20 +154,20 @@ make lint
 Run the API smoke suite (health, CRUD flow, and auth-mode write checks):
 
 ```bash
-KUJO_BIN=/path/to/kujo ./scripts/run-smoke-tests.sh
+KUJO_BIN=kujo ./scripts/run-smoke-tests.sh
 ```
 
 Run the full backend regression suite from root:
 
 ```bash
-make test KUJO_BIN=/path/to/kujo
+make test KUJO_BIN=kujo
 ```
 
 Run the targeted performance baseline and DR restore drills directly:
 
 ```bash
-KUJO_BIN=/path/to/kujo bash tests/t5_01_performance_baseline.sh
-KUJO_BIN=/path/to/kujo bash tests/t5_02_backup_restore_drill.sh
+KUJO_BIN=kujo bash tests/t5_01_performance_baseline.sh
+KUJO_BIN=kujo bash tests/t5_02_backup_restore_drill.sh
 ```
 
 ## Environment Variables
