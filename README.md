@@ -39,11 +39,10 @@ cd /path/to/crud-api
 kujo run main.kujo
 ```
 
-Or:
+Or run the interpreter path directly:
 
 ```bash
-KUJO_BIN=kujo
-$KUJO_BIN run main.kujo --interpreter
+kujo run main.kujo --interpreter
 ```
 
 Default API URL: `http://127.0.0.1:4100`
@@ -94,10 +93,10 @@ make lint
 make test
 ```
 
-Set a custom runtime binary when needed:
+The `Makefile` defaults to the installed `kujo` command. Set a custom runtime binary only when needed:
 
 ```bash
-make test KUJO_BIN=kujo
+make test KUJO_BIN=/path/to/kujo
 ```
 
 ## CI And Contribution Workflow
@@ -154,20 +153,20 @@ make lint
 Run the API smoke suite (health, CRUD flow, and auth-mode write checks):
 
 ```bash
-KUJO_BIN=kujo ./scripts/run-smoke-tests.sh
+./scripts/run-smoke-tests.sh
 ```
 
 Run the full backend regression suite from root:
 
 ```bash
-make test KUJO_BIN=kujo
+make test
 ```
 
 Run the targeted performance baseline and DR restore drills directly:
 
 ```bash
-KUJO_BIN=kujo bash tests/t5_01_performance_baseline.sh
-KUJO_BIN=kujo bash tests/t5_02_backup_restore_drill.sh
+bash tests/t5_01_performance_baseline.sh
+bash tests/t5_02_backup_restore_drill.sh
 ```
 
 ## Environment Variables

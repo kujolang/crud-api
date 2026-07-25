@@ -21,12 +21,10 @@ concurrency checks, and contract-tested item/project behavior intact.
 
 ## Local Setup
 
-Use the Kujo runtime expected by this repository. Most repos support one of
-these environment variables:
+Install Kujo so the `kujo` command is available on your `PATH`:
 
 ```bash
-export KUJO_BIN=kujo
-export KUJO=kujo
+kujo --version
 ```
 
 Primary backend entry point:
@@ -114,11 +112,11 @@ the repo.
 Required CRUD API validation:
 
 ```bash
-make test KUJO_BIN=kujo
+make test
 cd frontend && npm run lint && npm run build
 cd frontend && npm audit
-KUJO_BIN=kujo bash tests/t5_01_performance_baseline.sh
-KUJO_BIN=kujo bash tests/t5_02_backup_restore_drill.sh
+bash tests/t5_01_performance_baseline.sh
+bash tests/t5_02_backup_restore_drill.sh
 ```
 
 Keep contract validation passing when endpoint behavior changes:
