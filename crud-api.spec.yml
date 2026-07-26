@@ -1,0 +1,63 @@
+name: "CRUD API launch readiness review"
+goal: "Keep CRUD API locally release-ready as a compact Kujo and SQLite server-first showcase with a Next.js playground."
+version: "1.0.0"
+background: "CRUD API is part of the Kujo prelaunch showcase matrix. The verified scope is local backend contracts, smoke tests, frontend lint/build, performance/DR drills, and docs/readiness wording."
+scope: "Repository-local API runtime, SQLite item/project workflows, auth/security profiles, frontend playground quality gates, release checklist wording, and launch evidence capture."
+non_goals:
+  - "Publishing packages or public releases"
+  - "Pushing final release tags"
+  - "Hosted deployment or live credential use"
+  - "Claiming production certification without target-environment proof"
+relevant_systems:
+  - "Kujo runtime"
+  - "SQLite/local data files"
+  - "Next.js frontend"
+  - "CRUD API test scripts"
+  - "prelaunch launch evidence packet"
+likely_files:
+  - "README.md"
+  - "RELEASE.md"
+  - "main.kujo"
+  - "src/*.kujo"
+  - "tests/*.sh"
+  - "scripts/run-all-tests.sh"
+  - "scripts/quality-check.sh"
+  - "frontend/package.json"
+  - "tests/crud_api_eval.json"
+acceptance_criteria:
+  - "`make test KUJO_BIN=kujo` passes."
+  - "`KUJO_BIN=kujo ./scripts/run-smoke-tests.sh` passes."
+  - "`./scripts/quality-check.sh` passes."
+  - "`cd frontend && npm run build` passes."
+  - "Docs and release checklist avoid production certification claims without target-environment proof."
+eval_requirements:
+  - description: "CRUD API smoke tests pass."
+    check_type: "command_succeeds"
+    params:
+      command: "KUJO_BIN=kujo ./scripts/run-smoke-tests.sh"
+  - description: "CRUD API full backend tests pass."
+    check_type: "command_succeeds"
+    params:
+      command: "make test KUJO_BIN=kujo"
+risks:
+  - risk: "Production deployment requires target secrets, CORS, durable storage, monitoring, and reverse-proxy proof."
+    mitigation: "Keep local showcase proof separate from production certification and record deployment proof as external."
+    severity: "high"
+  - risk: "Generated SQLite DB and frontend build artifacts can pollute commits."
+    mitigation: "Keep generated data/build outputs ignored and inspect status before committing."
+    severity: "medium"
+dependencies:
+  - "kujo on PATH"
+  - "Node.js and npm"
+  - "Bash 3.2+"
+review_expectations:
+  - "Review API contract docs when route behavior changes."
+  - "Review frontend build output and dependency audit before public launch."
+human_approval_points:
+  - "Before hosted deployment or live credential use"
+  - "Before publishing packages, public releases, or final release tags"
+priority: "high"
+tags:
+  - "kujo"
+  - "crud-api"
+  - "launch-readiness"

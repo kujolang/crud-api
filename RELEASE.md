@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist for each production-ready release candidate.
+Use this checklist for each release candidate. Production readiness still requires target-environment deployment, secret, storage, monitoring, and human approval evidence outside this local showcase gate.
 
 ## Pre-Release
 
