@@ -124,8 +124,13 @@ jobs:
         with:
           node-version: "20.17.0"
 
+      - name: Install released Kujo runtime
+        uses: kujolang/kujo/.github/actions/setup-kujo@b1cec6b6c0f22e9015f5a8d3d1afc7e30b6964f7
+        with:
+          version: v1.8.1
+
       - name: Verify Kujo is available
-        run: command -v kujo
+        run: kujo --version
 
       - name: Run backend regression suite
         run: make test KUJO_BIN=kujo
