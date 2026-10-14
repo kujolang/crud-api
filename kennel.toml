@@ -1,0 +1,15 @@
+[package]
+name = "crud-api"
+version = "1.0.1"
+description = "Kujo CRUD API showcase with SQLite, authentication and a Next.js playground."
+license = "MIT"
+repository = "https://github.com/kujolang/crud-api"
+
+[kujo]
+minimum_version = "1.8.1"
+entry = "main.kujo"
+sources = [".", "src"]
+includes = ["README.md", "LICENSE", "CHANGELOG.md", "docs", "tests", "scripts", "frontend", "Makefile"]
+excludes = [".git", "node_modules", ".next", "data", "artifacts", "dist", "build"]
+
+[dependencies]
