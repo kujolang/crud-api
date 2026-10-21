@@ -103,7 +103,7 @@ make test KUJO_BIN=/path/to/kujo
 
 - GitHub Actions workflow: `.github/workflows/ci.yml`
 - Triggered on pushes to `main` and pull requests targeting `main`.
-- CI uses pinned runner (`ubuntu-24.04`) and Node (`20.17.0`) for reproducible frontend and backend test runs. The backend suite expects a `kujo` binary on `PATH`.
+- CI uses pinned runner (`ubuntu-24.04`) and Node (`22.23.4`) for reproducible frontend and backend test runs. The backend suite expects a `kujo` binary on `PATH`.
 - Contribution guide: `CONTRIBUTING.md`
 - Security policy: `SECURITY.md`
 - Release checklist: `RELEASE.md`
