@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.2-black)](https://github.com/kujolang/crud-api)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
-[![SQLite](https://img.shields.io/badge/database-SQLite-0f766e)](https://www.sqlite.org/)
+[![SQLite](https://img.shields.io/badge/database-SQLite-black)](https://www.sqlite.org/)
 
 A server-first showcase/proof app built with Kujo + SQLite, plus a minimal Next.js playground UI.
 
