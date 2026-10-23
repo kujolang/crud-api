@@ -42,7 +42,7 @@ kujo run main.kujo
 Or run the interpreter path directly:
 
 ```bash
-kujo run main.kujo --interpreter
+kujo run main.kujo
 ```
 
 Default API URL: `http://127.0.0.1:4100`
