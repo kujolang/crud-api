@@ -80,7 +80,7 @@ npm run dev
 
 The frontend reads `NEXT_PUBLIC_API_BASE_URL` from `.env.local` (default: `http://127.0.0.1:4100`) for both API requests and the topbar API root link.
 
-Default frontend URL: `http://localhost:3000`
+Default frontend URL: `http://localhost:3002`
 
 ### 3) Root command orchestration
 

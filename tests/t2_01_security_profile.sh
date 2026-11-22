@@ -76,7 +76,7 @@ fi
 set +e
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="4142" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_short.db" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="short" KUJO_CRUD_CORS_ORIGIN="http://localhost:3000" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_short.log" 2>&1
+	KUJO_CRUD_PORT="4142" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_short.db" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="short" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_short.log" 2>&1
 )
 prod_short_code=$?
 set -e
@@ -98,7 +98,7 @@ DB_PROD="$TMP_DIR/t2_01_prod_ok.db"
 rm -f "$DB_PROD" "$DB_PROD-shm" "$DB_PROD-wal"
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT_PROD" KUJO_CRUD_DB_PATH="$DB_PROD" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="testtoken-16char" KUJO_CRUD_CORS_ORIGIN="http://localhost:3000" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_ok.log" 2>&1
+	KUJO_CRUD_PORT="$PORT_PROD" KUJO_CRUD_DB_PATH="$DB_PROD" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="testtoken-16char" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_ok.log" 2>&1
 ) &
 SERVER_PID_PROD=$!
 wait_for_health "$PORT_PROD"
