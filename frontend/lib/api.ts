@@ -101,8 +101,10 @@ function build_headers(authToken?: string, isJson?: boolean, ifUnmodifiedSince?:
  * @returns Parsed JSON payload on success
  */
 async function request_json<T>(path: string, options: RequestInit = {}): Promise<T> {
+	const deadline = AbortSignal.timeout(15_000);
 	const response = await fetch(api_base_url + path, {
 		...options,
+		signal: options.signal ? AbortSignal.any([options.signal, deadline]) : deadline,
 		cache: "no-store"
 	});
 
@@ -110,8 +112,8 @@ async function request_json<T>(path: string, options: RequestInit = {}): Promise
 	try {
 		payload = await response.json();
 	} catch (err) {
-		if (!response.ok) {
-			throw new Error("Request failed with status " + response.status);
+		if (response.ok) {
+			throw new Error("API returned an invalid JSON response");
 		}
 	}
 
@@ -129,7 +131,7 @@ async function request_json<T>(path: string, options: RequestInit = {}): Promise
  * @param options Query options
  * @returns Paginated items response
  */
-export async function list_items(options: ListItemsOptions = {}): Promise<ListItemsResponse> {
+export async function list_items(options: ListItemsOptions = {}, signal?: AbortSignal): Promise<ListItemsResponse> {
 	const params = new URLSearchParams();
 
 	if (typeof options.limit === "number") {
@@ -166,7 +168,7 @@ export async function list_items(options: ListItemsOptions = {}): Promise<ListIt
 
 	const query = params.toString();
 	const path = query.length > 0 ? "/items?" + query : "/items";
-	return request_json<ListItemsResponse>(path);
+	return request_json<ListItemsResponse>(path, { signal });
 }
 
 /**
@@ -184,8 +186,8 @@ export async function get_item(id: number): Promise<Item> {
  *
  * @returns Project collection with relation counts
  */
-export async function list_projects(): Promise<ListProjectsResponse> {
-	return request_json<ListProjectsResponse>("/projects");
+export async function list_projects(signal?: AbortSignal): Promise<ListProjectsResponse> {
+	return request_json<ListProjectsResponse>("/projects", { signal });
 }
 
 /**

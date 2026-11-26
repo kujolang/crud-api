@@ -64,20 +64,18 @@ jobs:
         run: |
           mkdir -p artifacts
           cd frontend
-          npx --yes @cyclonedx/cyclonedx-npm --output-file ../artifacts/frontend-sbom.json --output-format json --spec-version 1.5
+          npm exec --yes --package @cyclonedx/cyclonedx-npm@7.0.1 -- cyclonedx-npm --output-file ../artifacts/frontend-sbom.json --output-format json --spec-version 1.5
           cd ..
           test -s artifacts/frontend-sbom.json
 
       - name: Secret pattern gate
         run: |
-          set +e
-          matches="$(git grep -nE '(AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY-----|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\-_]{35})' -- ':!frontend/package-lock.json' ':!*.md')"
-          exit_code="$?"
-          set -e
-          if [[ "$exit_code" -eq 0 ]]; then
-            echo "Potential secrets detected by pattern gate:"
-            echo "$matches"
+          if git grep -qE '(AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY-----|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\-_]{35})' -- ':!frontend/package-lock.json' ':!*.md'; then
+            echo "A tracked source file matched the secret pattern gate."
             exit 1
+          else
+            result=$?
+            if [[ "$result" -ne 1 ]]; then exit "$result"; fi
           fi
 
       - name: Upload security artifacts

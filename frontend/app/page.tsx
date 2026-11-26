@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { format_timestamp } from "@/lib/format";
 import {
 	api_base_url,
@@ -67,8 +67,29 @@ function build_patch_payload(original: Item, draft: EditableItem): Partial<ItemP
 	return payload;
 }
 
+const token_storage_key = "kujo_crud_token";
+
+function subscribe_to_storage(on_change: () => void): () => void {
+	window.addEventListener("storage", on_change);
+	return () => window.removeEventListener("storage", on_change);
+}
+
+function read_saved_token(): string {
+	try {
+		return window.localStorage.getItem(token_storage_key) || "";
+	} catch {
+		return "";
+	}
+}
+
+function empty_saved_token(): string {
+	return "";
+}
+
 export default function HomePage() {
-	const [auth_token, set_auth_token] = useState("");
+	const saved_token = useSyncExternalStore(subscribe_to_storage, read_saved_token, empty_saved_token);
+	const [token_draft, set_auth_token] = useState<string | null>(null);
+	const auth_token = token_draft ?? saved_token;
 	const [status_filter, set_status_filter] = useState<"all" | ItemStatus>("all");
 	const [project_filter_text, set_project_filter_text] = useState("all");
 	const [limit_text, set_limit_text] = useState("50");
@@ -86,6 +107,7 @@ export default function HomePage() {
 	const [create_project_id_text, set_create_project_id_text] = useState("none");
 
 	const [is_loading, set_is_loading] = useState(false);
+	const active_list = useRef<AbortController | null>(null);
 	const [error_text, set_error_text] = useState("");
 	const [success_text, set_success_text] = useState("");
 
@@ -105,23 +127,13 @@ export default function HomePage() {
 		return drafts[selected_item.id] || to_editable_item(selected_item);
 	}, [drafts, selected_item]);
 
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		const saved_token = window.localStorage.getItem("kujo_crud_token") || window.localStorage.getItem("kujo_crud_token") || "";
-		set_auth_token(saved_token);
-	}, []);
-
-	const load_projects = async () => {
-		const response = await list_projects();
-		set_projects(response.projects);
-	};
 
 	const load_items = async () => {
+		active_list.current?.abort();
+		const controller = new AbortController();
+		active_list.current = controller;
 		set_is_loading(true);
 		set_error_text("");
-		set_success_text("");
 
 		try {
 			const parsed_limit = Number(limit_text);
@@ -143,7 +155,10 @@ export default function HomePage() {
 				project_id: typeof project_filter === "number" ? project_filter : undefined,
 				limit: parsed_limit,
 				offset: parsed_offset
-			});
+			}, controller.signal);
+			if (controller.signal.aborted) {
+				return;
+			}
 
 			const filtered_items =
 				project_filter_text === "none"
@@ -169,21 +184,34 @@ export default function HomePage() {
 				return null;
 			});
 		} catch (err) {
-			set_error_text(err instanceof Error ? err.message : "Failed to load items");
+			if (!controller.signal.aborted) {
+				set_error_text(err instanceof Error ? err.message : "Failed to load items");
+			}
 		} finally {
-			set_is_loading(false);
+			if (active_list.current === controller) {
+				active_list.current = null;
+				set_is_loading(false);
+			}
 		}
 	};
 
 	useEffect(() => {
-		void (async () => {
-			try {
-				await load_projects();
-				await load_items();
-			} catch (err) {
-				set_error_text(err instanceof Error ? err.message : "Failed to load dashboard data");
+		const controller = new AbortController();
+		void list_projects(controller.signal).then(({ projects }) => {
+			if (!controller.signal.aborted) {
+				set_projects(projects);
 			}
-		})();
+		}).catch((err: unknown) => {
+			if (!controller.signal.aborted) {
+				set_error_text(err instanceof Error ? err.message : "Failed to load projects");
+			}
+		});
+		void load_items();
+		return () => {
+			controller.abort();
+			active_list.current?.abort();
+			active_list.current = null;
+		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
@@ -191,8 +219,12 @@ export default function HomePage() {
 		if (typeof window === "undefined") {
 			return;
 		}
-		window.localStorage.setItem("kujo_crud_token", normalized_auth_token);
-		set_success_text("Saved bearer token in local storage");
+		try {
+			window.localStorage.setItem(token_storage_key, normalized_auth_token);
+			set_success_text("Saved bearer token in local storage");
+		} catch {
+			set_error_text("Browser storage is unavailable");
+		}
 	};
 
 	const on_create_submit = async (event: FormEvent) => {
