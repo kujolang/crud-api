@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 DB_PATH="$TMP_DIR/t1_02_seed.db"
 LOG_1="$TMP_DIR/t1_02_first.log"
@@ -36,11 +37,11 @@ start_server() {
 	local log_path="$2"
 	local pid_var="$3"
 
-	lsof -ti:"$port" | xargs -I{} kill {} >/dev/null 2>&1 || true
+	require_free_port "$port"
 
 	(
 		cd "$ROOT_DIR"
-		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
+		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$DB_PATH" exec "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
 	) &
 	local pid=$!
 	eval "$pid_var=$pid"

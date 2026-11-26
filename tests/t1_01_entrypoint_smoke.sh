@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 PORT="4115"
 API_HOST="${KUJO_CRUD_API_HOST:-127.0.0.1}"
 TMP_DIR="$ROOT_DIR/.tmp"
@@ -20,6 +21,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+require_free_port "$PORT"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT" \
@@ -29,7 +31,7 @@ trap cleanup EXIT
 		KUJO_CRUD_AUTH_STRATEGY="static_bearer" \
 		KUJO_CRUD_AUTH_TOKEN="" \
 		KUJO_CRUD_MAX_BODY_BYTES="65536" \
-		"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+		exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 PORT="4136"
@@ -19,12 +20,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+require_free_port "$PORT"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT" \
 	KUJO_CRUD_DB_PATH="$DB_PATH" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -75,5 +77,13 @@ if [[ "$offset_status" != "200" ]]; then
 	echo "Expected offset mode to remain functional, got $offset_status"
 	exit 1
 fi
+
+curl -sS "http://127.0.0.1:$PORT/items?limit=2&cursor=id:3" > "$TMP_DIR/t3_03_final.json"
+node -e '
+	const page = require(process.argv[1]);
+	if (page.count !== 2 || page.has_more !== false || page.next_cursor !== "") {
+		throw new Error("Expected a full final page without a continuation cursor");
+	}
+' "$TMP_DIR/t3_03_final.json"
 
 echo "t3_03_cursor_pagination: PASS"

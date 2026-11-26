@@ -182,7 +182,7 @@ bash tests/t5_02_backup_restore_drill.sh
 | `KUJO_CRUD_AUTH_HEADER_NAME` | `X-API-Key` | Header name used when `KUJO_CRUD_AUTH_STRATEGY=header_value` |
 | `KUJO_CRUD_AUTH_HEADER_VALUE` | _(empty)_ | Required header value when `KUJO_CRUD_AUTH_STRATEGY=header_value` |
 | `KUJO_CRUD_MIN_AUTH_SECRET_LENGTH` | `16` | Minimum production auth secret length |
-| `KUJO_CRUD_MAX_BODY_BYTES` | `65536` | Max JSON body size |
+| `KUJO_CRUD_MAX_BODY_BYTES` | `65536` | Max JSON body size in UTF-8 bytes |
 | `KUJO_CRUD_SECURITY_PROFILE` | `demo` | Security mode: `demo` or `production` |
 | `KUJO_CRUD_RATE_LIMIT_MAX_WRITES` | `30` | Max write requests per client key within one window |
 | `KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS` | `60` | Window size (seconds) for write rate limiting |
@@ -193,19 +193,19 @@ bash tests/t5_02_backup_restore_drill.sh
 - `demo` is the default and prioritizes local developer convenience.
 - `production` enforces stricter startup validation.
 
-When `KUJO_CRUD_SECURITY_PROFILE=production`, startup requires:
+Startup rejects unknown security profiles and auth strategies before opening SQLite. When `KUJO_CRUD_SECURITY_PROFILE=production`, startup requires:
 
 - If `KUJO_CRUD_AUTH_STRATEGY=static_bearer`, then `KUJO_CRUD_AUTH_TOKEN` must be set
 - If `KUJO_CRUD_AUTH_STRATEGY=header_value`, then `KUJO_CRUD_AUTH_HEADER_VALUE` must be set
 - Configured auth secrets must be at least `KUJO_CRUD_MIN_AUTH_SECRET_LENGTH` characters
 - `KUJO_CRUD_CORS_ORIGIN` to be an explicit origin (not `*`)
 
-Write routes (`POST`, `PUT`, `PATCH`, `DELETE`) are rate-limited and return `429` with a `Retry-After` header when the limit is exceeded. By default, the limiter ignores client-supplied proxy headers so callers cannot rotate `X-Forwarded-For` to bypass local limits. Set `KUJO_CRUD_TRUST_PROXY_HEADERS=true` only behind a trusted reverse proxy that overwrites inbound forwarding headers.
+Write routes (`POST`, `PUT`, `PATCH`, `DELETE`) use a per-peer, process-local limit. Active buckets expire and the limiter holds up to 4,096 peers. Over-limit requests return `429` with `Retry-After`. By default, the limiter ignores client-supplied proxy headers so callers cannot rotate `X-Forwarded-For` to bypass local limits. Set `KUJO_CRUD_TRUST_PROXY_HEADERS=true` only behind a trusted reverse proxy that overwrites inbound forwarding headers.
 
 ## Observability And Troubleshooting
 
-- The API accepts optional inbound `X-Request-Id` and propagates it to responses.
-- If no request ID is provided, the server generates one and includes it in `X-Request-Id`.
+- The API propagates inbound `X-Request-Id` values containing 1–128 ASCII letters, digits, periods, underscores, colons, and hyphens.
+- The server generates a request ID for missing, invalid, or repeated values and includes it in `X-Request-Id`.
 - Runtime logs are structured JSON lines with `event`, `request_id`, `method`, `path`, and status/security metadata.
 - Security events (auth denied and write-rate-limit denied) are logged without sensitive header/token values.
 

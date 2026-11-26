@@ -2,31 +2,31 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 PORT="4112"
-DATA_DB="$ROOT_DIR/data/kujo_crud_api.db"
 LOG_PATH="$ROOT_DIR/.tmp/t0_03_server.log"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 
 mkdir -p "$ROOT_DIR/.tmp"
-rm -f "$DATA_DB" "$DATA_DB-shm" "$DATA_DB-wal"
-
-existing_pid="$(lsof -ti tcp:"$PORT" || true)"
-if [[ -n "$existing_pid" ]]; then
-	kill "$existing_pid" >/dev/null 2>&1 || true
-	sleep 0.25
-fi
+require_free_port "$PORT"
+TEST_ROOT="$(mktemp -d "$ROOT_DIR/.tmp/t0_03.XXXXXX")"
+DATA_DB="$TEST_ROOT/data/kujo_crud_api.db"
 
 cleanup() {
 	if [[ -n "${SERVER_PID:-}" ]]; then
 		kill "$SERVER_PID" >/dev/null 2>&1 || true
 		wait "$SERVER_PID" >/dev/null 2>&1 || true
 	fi
+	rm -f "$DATA_DB" "$DATA_DB-shm" "$DATA_DB-wal"
+	rmdir "$TEST_ROOT/data" "$TEST_ROOT" 2>/dev/null || true
 }
 trap cleanup EXIT
+mkdir "$TEST_ROOT/data"
 
 (
-	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT" "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	cd "$TEST_ROOT"
+	unset KUJO_CRUD_DB_PATH
+	KUJO_CRUD_PORT="$PORT" exec "$KUJO_BIN" run "$ROOT_DIR/main.kujo" --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 

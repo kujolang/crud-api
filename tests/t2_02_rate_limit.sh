@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 PORT="4130"
 DB_PATH="$TMP_DIR/t2_02_rate_limit.db"
@@ -20,6 +21,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+require_free_port "$PORT"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT" \
@@ -27,7 +29,7 @@ trap cleanup EXIT
 	KUJO_CRUD_AUTH_TOKEN="$AUTH_TOKEN" \
 	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="2" \
 	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="2" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -91,6 +93,7 @@ SERVER_PID=""
 PORT_PROXY_DEFAULT="4143"
 DB_PROXY_DEFAULT="$TMP_DIR/t2_02_proxy_default.db"
 rm -f "$DB_PROXY_DEFAULT" "$DB_PROXY_DEFAULT-shm" "$DB_PROXY_DEFAULT-wal"
+require_free_port "$PORT_PROXY_DEFAULT"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT_PROXY_DEFAULT" \
@@ -98,7 +101,7 @@ rm -f "$DB_PROXY_DEFAULT" "$DB_PROXY_DEFAULT-shm" "$DB_PROXY_DEFAULT-wal"
 	KUJO_CRUD_AUTH_TOKEN="" \
 	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="1" \
 	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="30" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_default.log" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_default.log" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -130,6 +133,7 @@ SERVER_PID=""
 PORT_PROXY_TRUSTED="4144"
 DB_PROXY_TRUSTED="$TMP_DIR/t2_02_proxy_trusted.db"
 rm -f "$DB_PROXY_TRUSTED" "$DB_PROXY_TRUSTED-shm" "$DB_PROXY_TRUSTED-wal"
+require_free_port "$PORT_PROXY_TRUSTED"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT_PROXY_TRUSTED" \
@@ -138,7 +142,7 @@ rm -f "$DB_PROXY_TRUSTED" "$DB_PROXY_TRUSTED-shm" "$DB_PROXY_TRUSTED-wal"
 	KUJO_CRUD_TRUST_PROXY_HEADERS="true" \
 	KUJO_CRUD_RATE_LIMIT_MAX_WRITES="1" \
 	KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS="30" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_trusted.log" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_02_proxy_trusted.log" 2>&1
 ) &
 SERVER_PID=$!
 

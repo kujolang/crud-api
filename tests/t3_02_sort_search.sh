@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 PORT="4135"
@@ -19,12 +20,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+require_free_port "$PORT"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT" \
 	KUJO_CRUD_DB_PATH="$DB_PATH" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -67,5 +69,13 @@ if [[ "$long_q_status" != "400" ]]; then
 	echo "Expected overly long q to return 400, got $long_q_status"
 	exit 1
 fi
+
+curl -fsS --get --data-urlencode 'q=Sample Patch' "http://127.0.0.1:$PORT/items" > "$TMP_DIR/t3_02_encoded.json"
+node -e '
+	const page = require(process.argv[1]);
+	if (page.q !== "Sample Patch" || page.count !== 1 || page.items[0].title !== "Sample Patch Target") {
+		throw new Error("Encoded multiword filter did not match its source item");
+	}
+' "$TMP_DIR/t3_02_encoded.json"
 
 echo "t3_02_sort_search: PASS"

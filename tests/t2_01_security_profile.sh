@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 
@@ -35,9 +36,10 @@ wait_for_health() {
 PORT_DEMO="4127"
 DB_DEMO="$TMP_DIR/t2_01_demo.db"
 rm -f "$DB_DEMO" "$DB_DEMO-shm" "$DB_DEMO-wal"
+require_free_port "$PORT_DEMO"
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT_DEMO" KUJO_CRUD_DB_PATH="$DB_DEMO" KUJO_CRUD_SECURITY_PROFILE="demo" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_demo.log" 2>&1
+	KUJO_CRUD_PORT="$PORT_DEMO" KUJO_CRUD_DB_PATH="$DB_DEMO" KUJO_CRUD_SECURITY_PROFILE="demo" exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_demo.log" 2>&1
 ) &
 SERVER_PID_DEMO=$!
 wait_for_health "$PORT_DEMO"
@@ -56,7 +58,7 @@ SERVER_PID_DEMO=""
 set +e
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="4128" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_fail.db" KUJO_CRUD_SECURITY_PROFILE="production" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_fail.log" 2>&1
+	KUJO_CRUD_PORT="4128" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_fail.db" KUJO_CRUD_SECURITY_PROFILE="production" exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_fail.log" 2>&1
 )
 prod_fail_code=$?
 set -e
@@ -76,7 +78,7 @@ fi
 set +e
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="4142" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_short.db" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="short" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_short.log" 2>&1
+	KUJO_CRUD_PORT="4142" KUJO_CRUD_DB_PATH="$TMP_DIR/t2_01_prod_short.db" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="short" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_short.log" 2>&1
 )
 prod_short_code=$?
 set -e
@@ -96,9 +98,10 @@ fi
 PORT_PROD="4129"
 DB_PROD="$TMP_DIR/t2_01_prod_ok.db"
 rm -f "$DB_PROD" "$DB_PROD-shm" "$DB_PROD-wal"
+require_free_port "$PORT_PROD"
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT_PROD" KUJO_CRUD_DB_PATH="$DB_PROD" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="testtoken-16char" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_ok.log" 2>&1
+	KUJO_CRUD_PORT="$PORT_PROD" KUJO_CRUD_DB_PATH="$DB_PROD" KUJO_CRUD_SECURITY_PROFILE="production" KUJO_CRUD_AUTH_TOKEN="testtoken-16char" KUJO_CRUD_CORS_ORIGIN="http://localhost:3002" exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_01_prod_ok.log" 2>&1
 ) &
 SERVER_PID_PROD=$!
 wait_for_health "$PORT_PROD"
@@ -112,5 +115,17 @@ fi
 kill "$SERVER_PID_PROD" >/dev/null 2>&1 || true
 wait "$SERVER_PID_PROD" >/dev/null 2>&1 || true
 SERVER_PID_PROD=""
+
+invalid_db="$TMP_DIR/t2_01_invalid_config.db"
+if (
+	cd "$ROOT_DIR"
+	KUJO_CRUD_DB_PATH="$invalid_db" KUJO_CRUD_SECURITY_PROFILE="production-typo" \
+		exec "$KUJO_BIN" run main.kujo --interpreter
+) > "$TMP_DIR/t2_01_invalid_config.log" 2>&1; then
+	echo "Expected an invalid profile to fail startup"
+	exit 1
+fi
+grep -q 'KUJO_CRUD_SECURITY_PROFILE must be demo or production' "$TMP_DIR/t2_01_invalid_config.log"
+test ! -e "$invalid_db"
 
 echo "t2_01_security_profile: PASS"

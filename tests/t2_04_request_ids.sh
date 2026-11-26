@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 PORT="4133"
@@ -11,11 +12,7 @@ LOG_PATH="$TMP_DIR/t2_04_request_ids.log"
 mkdir -p "$TMP_DIR"
 rm -f "$DB_PATH" "$DB_PATH-shm" "$DB_PATH-wal" "$LOG_PATH"
 
-existing_pid="$(lsof -ti tcp:"$PORT" || true)"
-if [[ -n "$existing_pid" ]]; then
-	kill "$existing_pid" >/dev/null 2>&1 || true
-	sleep 0.25
-fi
+require_free_port "$PORT"
 
 cleanup() {
 	if [[ -n "${SERVER_PID:-}" ]]; then
@@ -30,7 +27,7 @@ trap cleanup EXIT
 	KUJO_CRUD_PORT="$PORT" \
 	KUJO_CRUD_DB_PATH="$DB_PATH" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -74,5 +71,16 @@ if ! grep -q '"request_id":"client-id-123"' "$LOG_PATH"; then
 	echo "Expected propagated request ID in logs"
 	exit 1
 fi
+
+for id in request-one request-two; do
+	curl -fsS -D "$TMP_DIR/t2_04_$id.headers" -o /dev/null "http://127.0.0.1:$PORT/health" -H "x-ReQuEsT-iD: $id" &
+	if [[ "$id" == request-one ]]; then first_pid=$!; else second_pid=$!; fi
+done
+wait "$first_pid"
+wait "$second_pid"
+for id in request-one request-two; do
+	tr -d '\r' < "$TMP_DIR/t2_04_$id.headers" | grep -qi "^X-Request-Id: $id$"
+	grep '"event":"request.complete"' "$LOG_PATH" | grep -q "\"request_id\":\"$id\""
+done
 
 echo "t2_04_request_ids: PASS"

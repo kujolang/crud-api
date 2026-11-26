@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 PORT_PRIMARY="4140"
 PORT_RESTORE="4141"
@@ -19,16 +20,6 @@ rm -f \
 	"$DB_RESTORE" "$DB_RESTORE-shm" "$DB_RESTORE-wal" \
 	"$LOG_PRIMARY" "$LOG_RESTORE" \
 	"$TMP_DIR/t5_02_project_create.json" "$TMP_DIR/t5_02_item_create.json" "$TMP_DIR/t5_02_projects_restored.json"
-
-clear_port() {
-	local port="$1"
-	local existing_pid
-	existing_pid="$(lsof -ti tcp:"$port" || true)"
-	if [[ -n "$existing_pid" ]]; then
-		kill "$existing_pid" >/dev/null 2>&1 || true
-		sleep 0.25
-	fi
-}
 
 wait_for_health() {
 	local port="$1"
@@ -56,13 +47,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-clear_port "$PORT_PRIMARY"
+require_free_port "$PORT_PRIMARY"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT_PRIMARY" \
 	KUJO_CRUD_DB_PATH="$DB_PRIMARY" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PRIMARY" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PRIMARY" 2>&1
 ) &
 PRIMARY_PID=$!
 wait_for_health "$PORT_PRIMARY" "$LOG_PRIMARY"
@@ -105,13 +96,13 @@ if [[ -f "$DB_BACKUP-shm" ]]; then
 	cp "$DB_BACKUP-shm" "$DB_RESTORE-shm"
 fi
 
-clear_port "$PORT_RESTORE"
+require_free_port "$PORT_RESTORE"
 (
 	cd "$ROOT_DIR"
 	KUJO_CRUD_PORT="$PORT_RESTORE" \
 	KUJO_CRUD_DB_PATH="$DB_RESTORE" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_RESTORE" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_RESTORE" 2>&1
 ) &
 RESTORE_PID=$!
 wait_for_health "$PORT_RESTORE" "$LOG_RESTORE"

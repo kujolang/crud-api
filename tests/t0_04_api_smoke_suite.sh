@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 SERVER_PID=""
@@ -22,11 +23,12 @@ start_server() {
 	local auth_token="$3"
 	local log_path="$4"
 
+	require_free_port "$port"
 	rm -f "$db_path" "$db_path-shm" "$db_path-wal"
 
 	(
 		cd "$ROOT_DIR"
-		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$db_path" KUJO_CRUD_AUTH_TOKEN="$auth_token" "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
+		KUJO_CRUD_PORT="$port" KUJO_CRUD_DB_PATH="$db_path" KUJO_CRUD_AUTH_TOKEN="$auth_token" exec "$KUJO_BIN" run main.kujo --interpreter >"$log_path" 2>&1
 	) &
 	SERVER_PID=$!
 

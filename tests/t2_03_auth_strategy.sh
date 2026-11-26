@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 
@@ -31,20 +32,10 @@ wait_for_health() {
 	exit 1
 }
 
-clear_port() {
-	local port="$1"
-	local existing_pid
-	existing_pid="$(lsof -ti tcp:"$port" || true)"
-	if [[ -n "$existing_pid" ]]; then
-		kill "$existing_pid" >/dev/null 2>&1 || true
-		sleep 0.25
-	fi
-}
-
 # Strategy 1: static bearer token
 PORT_STATIC="4131"
 DB_STATIC="$TMP_DIR/t2_03_static.db"
-clear_port "$PORT_STATIC"
+require_free_port "$PORT_STATIC"
 rm -f "$DB_STATIC" "$DB_STATIC-shm" "$DB_STATIC-wal"
 (
 	cd "$ROOT_DIR"
@@ -52,7 +43,7 @@ rm -f "$DB_STATIC" "$DB_STATIC-shm" "$DB_STATIC-wal"
 	KUJO_CRUD_DB_PATH="$DB_STATIC" \
 	KUJO_CRUD_AUTH_STRATEGY="static_bearer" \
 	KUJO_CRUD_AUTH_TOKEN="static-token" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_static.log" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_static.log" 2>&1
 ) &
 SERVER_PID_STATIC=$!
 wait_for_health "$PORT_STATIC"
@@ -91,7 +82,7 @@ SERVER_PID_STATIC=""
 # Strategy 2: header value strategy
 PORT_HEADER="4132"
 DB_HEADER="$TMP_DIR/t2_03_header.db"
-clear_port "$PORT_HEADER"
+require_free_port "$PORT_HEADER"
 rm -f "$DB_HEADER" "$DB_HEADER-shm" "$DB_HEADER-wal"
 (
 	cd "$ROOT_DIR"
@@ -100,7 +91,7 @@ rm -f "$DB_HEADER" "$DB_HEADER-shm" "$DB_HEADER-wal"
 	KUJO_CRUD_AUTH_STRATEGY="header_value" \
 	KUJO_CRUD_AUTH_HEADER_NAME="X-Auth-Key" \
 	KUJO_CRUD_AUTH_HEADER_VALUE="header-token" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_header.log" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$TMP_DIR/t2_03_header.log" 2>&1
 ) &
 SERVER_PID_HEADER=$!
 wait_for_health "$PORT_HEADER"
@@ -131,5 +122,8 @@ if [[ "$header_auth_status" != "201" ]]; then
 	echo "Expected header strategy authorized write to return 201, got $header_auth_status"
 	exit 1
 fi
+
+curl -fsS -X OPTIONS -D "$TMP_DIR/t2_03_header_cors.headers" -o /dev/null "http://127.0.0.1:$PORT_HEADER/items"
+grep -i '^access-control-allow-headers:' "$TMP_DIR/t2_03_header_cors.headers" | grep -qi 'x-auth-key'
 
 echo "t2_03_auth_strategy: PASS"

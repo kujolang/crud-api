@@ -407,7 +407,7 @@ components:
       required: true
       schema:
         type: string
-      description: Must match current item `updated_at` token.
+      description: Send the current item `updated_at` string exactly as received. Each successful update advances the token, including immediate updates.
 
   responses:
     BadRequest:

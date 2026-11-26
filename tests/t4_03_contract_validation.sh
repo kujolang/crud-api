@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 PORT="4138"
@@ -12,11 +13,7 @@ CONTRACT_PATH="$ROOT_DIR/docs/openapi.yaml"
 mkdir -p "$TMP_DIR"
 rm -f "$DB_PATH" "$DB_PATH-shm" "$DB_PATH-wal" "$LOG_PATH"
 
-existing_pid="$(lsof -ti tcp:"$PORT" || true)"
-if [[ -n "$existing_pid" ]]; then
-	kill "$existing_pid" >/dev/null 2>&1 || true
-	sleep 0.25
-fi
+require_free_port "$PORT"
 
 cleanup() {
 	if [[ -n "${SERVER_PID:-}" ]]; then
@@ -64,7 +61,7 @@ fi
 	KUJO_CRUD_PORT="$PORT" \
 	KUJO_CRUD_DB_PATH="$DB_PATH" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 

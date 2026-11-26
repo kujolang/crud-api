@@ -1,10 +1,15 @@
+func fail_startup(message) {
+	print(message)
+	exit(1)
+}
+
 DEFAULT_PORT := 4100
 DEFAULT_MAX_BODY_BYTES := 65536
 DEFAULT_MIN_AUTH_SECRET_LENGTH := 16
 export DEFAULT_PAGE_SIZE := 50
 export MAX_PAGE_SIZE := 200
 
-func parse_int_env(var_name, default_value) {
+export func parse_int_env(var_name, default_value) {
 	raw := env_or(var_name, to_string(default_value))
 	try {
 		parsed := parse_int(trim(raw))
@@ -31,8 +36,7 @@ export CORS_ALLOW_ORIGIN := cors_origin_raw
 export AUTH_TOKEN := env_or("KUJO_CRUD_AUTH_TOKEN", "")
 auth_strategy_raw := to_lower(trim(env_or("KUJO_CRUD_AUTH_STRATEGY", "static_bearer")))
 if auth_strategy_raw != "static_bearer" && auth_strategy_raw != "header_value" {
-	print("Invalid KUJO_CRUD_AUTH_STRATEGY value: " + auth_strategy_raw + " (falling back to static_bearer)")
-	auth_strategy_raw := "static_bearer"
+	fail_startup("KUJO_CRUD_AUTH_STRATEGY must be static_bearer or header_value")
 }
 
 export AUTH_STRATEGY := auth_strategy_raw
@@ -44,9 +48,36 @@ export TRUST_PROXY_HEADERS := env_bool("KUJO_CRUD_TRUST_PROXY_HEADERS", false)
 
 security_profile_raw := to_lower(trim(env_or("KUJO_CRUD_SECURITY_PROFILE", "demo")))
 if security_profile_raw != "demo" && security_profile_raw != "production" {
-	print("Invalid KUJO_CRUD_SECURITY_PROFILE value: " + security_profile_raw + " (falling back to demo)")
-	security_profile_raw := "demo"
+	fail_startup("KUJO_CRUD_SECURITY_PROFILE must be demo or production")
 }
 
 export SECURITY_PROFILE := security_profile_raw
 export SECURITY_PROFILE_IS_PRODUCTION := SECURITY_PROFILE == "production"
+
+if AUTH_STRATEGY == "header_value" && !regex_match(AUTH_HEADER_NAME, "^[A-Za-z0-9!#$%&'*+.^_`|~-]+$") {
+	fail_startup("KUJO_CRUD_AUTH_HEADER_NAME must be a valid HTTP field name")
+}
+
+if SECURITY_PROFILE_IS_PRODUCTION {
+	if AUTH_STRATEGY == "static_bearer" {
+		if len(trim(AUTH_TOKEN)) == 0 {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN is required for static_bearer strategy when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
+		if len(trim(AUTH_TOKEN)) < MIN_AUTH_SECRET_LENGTH {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_TOKEN must be at least " + to_string(MIN_AUTH_SECRET_LENGTH) + " characters when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
+	}
+
+	if AUTH_STRATEGY == "header_value" {
+		if len(trim(AUTH_HEADER_VALUE)) == 0 {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE is required for header_value strategy when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
+		if len(trim(AUTH_HEADER_VALUE)) < MIN_AUTH_SECRET_LENGTH {
+			fail_startup("Invalid production security configuration: KUJO_CRUD_AUTH_HEADER_VALUE must be at least " + to_string(MIN_AUTH_SECRET_LENGTH) + " characters when KUJO_CRUD_SECURITY_PROFILE=production")
+		}
+	}
+
+	if CORS_ALLOW_ORIGIN == "*" {
+		fail_startup("Invalid production security configuration: KUJO_CRUD_CORS_ORIGIN cannot be * when KUJO_CRUD_SECURITY_PROFILE=production")
+	}
+}

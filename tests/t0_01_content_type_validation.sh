@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 PORT="4111"
 TMP_DIR="$ROOT_DIR/.tmp"
 DB_PATH="$TMP_DIR/t0_01.db"
@@ -11,11 +12,7 @@ KUJO_BIN="${KUJO_BIN:-kujo}"
 mkdir -p "$TMP_DIR"
 rm -f "$DB_PATH" "$DB_PATH-shm" "$DB_PATH-wal"
 
-existing_pid="$(lsof -ti tcp:"$PORT" || true)"
-if [[ -n "$existing_pid" ]]; then
-	kill "$existing_pid" >/dev/null 2>&1 || true
-	sleep 0.25
-fi
+require_free_port "$PORT"
 
 cleanup() {
 	if [[ -n "${SERVER_PID:-}" ]]; then
@@ -27,7 +24,7 @@ trap cleanup EXIT
 
 (
 	cd "$ROOT_DIR"
-	KUJO_CRUD_PORT="$PORT" KUJO_CRUD_DB_PATH="$DB_PATH" "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	KUJO_CRUD_PORT="$PORT" KUJO_CRUD_DB_PATH="$DB_PATH" KUJO_CRUD_MAX_BODY_BYTES=128 exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -88,5 +85,16 @@ assert_status "400" "$status_malformed" "application/jsonx should fail"
 
 status_missing=$(run_post "" '{"title":"t0-01 missing","content":"bad","status":"draft"}' "$TMP_DIR/t0_01_missing_header.body")
 assert_status "400" "$status_missing" "missing content-type should fail"
+
+status_array=$(run_post "application/json" '["title"]' "$TMP_DIR/t0_01_array.body")
+assert_status "400" "$status_array" "JSON arrays are rejected at the object boundary"
+grep -q "Request body must be a JSON object" "$TMP_DIR/t0_01_array.body"
+status_non_string=$(run_post "application/json" '{"title":123,"content":"value"}' "$TMP_DIR/t0_01_type.body")
+assert_status "400" "$status_non_string" "numeric titles are rejected"
+grep -q "title must be a string" "$TMP_DIR/t0_01_type.body"
+unicode_payload=$(node -e 'process.stdout.write(JSON.stringify({title:"Unicode",content:"é".repeat(60)}));')
+status_unicode=$(run_post "application/json" "$unicode_payload" "$TMP_DIR/t0_01_bytes.body")
+assert_status "400" "$status_unicode" "UTF-8 byte limit applies before parsing"
+grep -q "Request body is too large" "$TMP_DIR/t0_01_bytes.body"
 
 echo "t0_01_content_type_validation: PASS"

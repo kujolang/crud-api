@@ -47,6 +47,12 @@ for sql in pragma_steps {
 	}
 }
 
+# Serialize migration and fixture initialization across processes using the same database.
+startup_transaction := db_execute_safe("BEGIN IMMEDIATE", [])
+if !startup_transaction["ok"] {
+	fatal("Database startup transaction failed: " + startup_transaction["error"])
+}
+
 schema_steps := [
 	{"sql": "CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)", "params": []},
 	{"sql": "CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)", "params": []},
@@ -165,6 +171,11 @@ for fixture in seed_fixtures {
 		}
 		seeded_items_count := seeded_items_count + 1
 	}
+}
+
+startup_commit := db_execute_safe("COMMIT", [])
+if !startup_commit["ok"] {
+	fatal("Database startup commit failed: " + startup_commit["error"])
 }
 
 print_seed_count("Ensured project content. Inserted projects", seeded_projects_count)

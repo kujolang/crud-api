@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/tests/helpers/http.sh"
 TMP_DIR="$ROOT_DIR/.tmp"
 KUJO_BIN="${KUJO_BIN:-kujo}"
 PORT="4137"
@@ -11,11 +12,7 @@ LOG_PATH="$TMP_DIR/t3_04_concurrency.log"
 mkdir -p "$TMP_DIR"
 rm -f "$DB_PATH" "$DB_PATH-shm" "$DB_PATH-wal" "$LOG_PATH"
 
-existing_pid="$(lsof -ti tcp:"$PORT" || true)"
-if [[ -n "$existing_pid" ]]; then
-	kill "$existing_pid" >/dev/null 2>&1 || true
-	sleep 0.25
-fi
+require_free_port "$PORT"
 
 cleanup() {
 	if [[ -n "${SERVER_PID:-}" ]]; then
@@ -30,7 +27,7 @@ trap cleanup EXIT
 	KUJO_CRUD_PORT="$PORT" \
 	KUJO_CRUD_DB_PATH="$DB_PATH" \
 	KUJO_CRUD_AUTH_TOKEN="" \
-	"$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
+	exec "$KUJO_BIN" run main.kujo --interpreter >"$LOG_PATH" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -60,7 +57,6 @@ if [[ "$missing_header_status" != "428" ]]; then
 	exit 1
 fi
 
-sleep 1
 
 first_update_status=$(curl -sS -o "$TMP_DIR/t3_04_first_update.json" -w "%{http_code}" -X PATCH "http://127.0.0.1:$PORT/items/$created_id" \
 	-H "Content-Type: application/json" \
@@ -87,7 +83,6 @@ fi
 
 project_id=$(node -e 'const fs=require("fs");const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(o.id));' "$TMP_DIR/t3_04_project_create.json")
 
-sleep 1
 
 project_patch_status=$(curl -sS -o "$TMP_DIR/t3_04_project_patch.json" -w "%{http_code}" -X PATCH "http://127.0.0.1:$PORT/items/$created_id" \
 	-H "Content-Type: application/json" \
@@ -118,6 +113,23 @@ fi
 reported_current=$(node -e 'const fs=require("fs");const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(o.current_updated_at||""));' "$TMP_DIR/t3_04_stale_update.json")
 if [[ "$reported_current" != "$current_updated_at" ]]; then
 	echo "Expected 409 payload to include current_updated_at"
+	exit 1
+fi
+
+# Two ordinary edits from the same revision produce one write and one conflict.
+for label in left right; do
+	(
+		curl -sS -o "$TMP_DIR/t3_04_race_$label.json" -w '%{http_code}\n' \
+			-X PATCH "http://127.0.0.1:$PORT/items/$created_id" \
+			-H "Content-Type: application/json" -H "If-Unmodified-Since: $current_updated_at" \
+			-d "{\"content\":\"$label edit\"}" > "$TMP_DIR/t3_04_race_$label.status"
+	) &
+	if [[ "$label" == left ]]; then left_pid=$!; else right_pid=$!; fi
+done
+wait "$left_pid"
+wait "$right_pid"
+if [[ "$(sort "$TMP_DIR/t3_04_race_left.status" "$TMP_DIR/t3_04_race_right.status")" != $'200\n409' ]]; then
+	echo "Expected one successful edit and one conflict from the same revision"
 	exit 1
 fi
 

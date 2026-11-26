@@ -1,103 +1,45 @@
-from src.config import TRUST_PROXY_HEADERS
-from src.validation import get_header
+from src.config import TRUST_PROXY_HEADERS, parse_int_env
+from src.request_context import get_header
 
-func parse_positive_int_env(var_name, default_value) {
-	raw := env_or(var_name, to_string(default_value))
-	try {
-		parsed := parse_int(trim(raw))
-		if parsed > 0 {
-			return parsed
-		}
-	} except err {}
+WINDOW_SECONDS := parse_int_env("KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS", 60)
+MAX_WRITES_PER_WINDOW := parse_int_env("KUJO_CRUD_RATE_LIMIT_MAX_WRITES", 30)
+MAX_ACTIVE_CLIENTS := 4096
 
-	return default_value
-}
-
-WINDOW_SECONDS := parse_positive_int_env("KUJO_CRUD_RATE_LIMIT_WINDOW_SECONDS", 60)
-MAX_WRITES_PER_WINDOW := parse_positive_int_env("KUJO_CRUD_RATE_LIMIT_MAX_WRITES", 30)
-
-func has_key_true(value, key_name) {
-	probe := has_key(value, key_name)
-	if type(probe) == "bool" {
-		return probe
-	}
-	if type(probe) == "int" {
-		return probe == 1
-	}
-	return false
-}
-
-func unix_seconds_now() {
-	try {
-		raw_now := to_string(now())
-		parts := split(raw_now, ".")
-		return parse_int(parts[0])
-	} except err {
-		return 0
-	}
-}
+rate_db := db_connect("sqlite", ":memory:")
+db_execute(rate_db, "CREATE TABLE write_buckets (client TEXT PRIMARY KEY, expires_ms INTEGER NOT NULL, count INTEGER NOT NULL)", [])
+db_execute(rate_db, "CREATE INDEX write_buckets_expiry ON write_buckets(expires_ms)", [])
 
 func rate_limit_key(req) {
 	if TRUST_PROXY_HEADERS {
-		forwarded := trim(get_header(req, "X-Forwarded-For"))
-		if len(forwarded) == 0 {
-			forwarded := trim(get_header(req, "x-forwarded-for"))
-		}
-		if len(forwarded) > 0 {
-			parts := split(forwarded, ",")
-			return "proxy-ip:" + trim(parts[0])
+		forwarded := get_header(req, "X-Forwarded-For")
+		if len(forwarded) > 0 && len(forwarded) <= 512 {
+			client := trim(split(forwarded, ",")[0])
+			if len(client) <= 45 && regex_match(client, "^[0-9A-Fa-f:.]+$") {
+				return "proxy-ip:" + to_lower(client)
+			}
 		}
 	}
-
-	if has_key_true(req, "ip") {
-		return "ip:" + to_string(req["ip"])
-	}
-
+	if len(req["peer_ip"]) > 0 { return "ip:" + req["peer_ip"] }
 	return "global"
 }
 
-write_buckets := {}
-
 export func check_write_rate_limit(req) {
-	key := rate_limit_key(req)
-	now_seconds := unix_seconds_now()
+	client := rate_limit_key(req)
+	now_ms := to_int(performance_now())
+	expires_ms := now_ms + WINDOW_SECONDS * 1000
+	try {
+		db_execute(rate_db, "DELETE FROM write_buckets WHERE expires_ms <= ?", [now_ms])
+		admitted := db_query(rate_db, "INSERT INTO write_buckets (client, expires_ms, count) SELECT ?1, ?2, 1 WHERE EXISTS (SELECT 1 FROM write_buckets WHERE client = ?1) OR (SELECT COUNT(*) FROM write_buckets) < ?4 ON CONFLICT(client) DO UPDATE SET count = count + 1 WHERE count < ?3 RETURNING count", [client, expires_ms, MAX_WRITES_PER_WINDOW, MAX_ACTIVE_CLIENTS])
+		if len(admitted) > 0 { return {"ok": true} }
 
-	if has_key_true(write_buckets, key) == false {
-		write_buckets[key] := {
-			"window_start": now_seconds,
-			"count": 1
+		blocked := db_query(rate_db, "SELECT expires_ms FROM write_buckets WHERE client = ?", [client])
+		retry_after := 1
+		if len(blocked) > 0 {
+			remaining_ms := blocked[0]["expires_ms"] - now_ms
+			retry_after = max(1, to_int(ceil(remaining_ms / 1000.0)))
 		}
-		return {"ok": true}
+		return {"ok": false, "status": 429, "error": "Too many write requests", "retry_after": retry_after}
+	} except err {
+		return {"ok": false, "status": 503, "error": "Write rate limit unavailable", "retry_after": 1}
 	}
-
-	bucket := write_buckets[key]
-	window_start := bucket["window_start"]
-	count := bucket["count"]
-
-	if (now_seconds - window_start) >= WINDOW_SECONDS {
-		write_buckets[key] := {
-			"window_start": now_seconds,
-			"count": 1
-		}
-		return {"ok": true}
-	}
-
-	if count >= MAX_WRITES_PER_WINDOW {
-		retry_after := WINDOW_SECONDS - (now_seconds - window_start)
-		if retry_after < 1 {
-			retry_after := 1
-		}
-		return {
-			"ok": false,
-			"error": "Too many write requests",
-			"retry_after": retry_after
-		}
-	}
-
-	write_buckets[key] := {
-		"window_start": window_start,
-		"count": count + 1
-	}
-
-	return {"ok": true}
 }
