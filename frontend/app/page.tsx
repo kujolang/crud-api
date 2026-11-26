@@ -106,7 +106,7 @@ export default function HomePage() {
 	const [create_status, set_create_status] = useState<ItemStatus>("draft");
 	const [create_project_id_text, set_create_project_id_text] = useState("none");
 
-	const [is_loading, set_is_loading] = useState(false);
+	const [is_loading, set_is_loading] = useState(true);
 	const active_list = useRef<AbortController | null>(null);
 	const [error_text, set_error_text] = useState("");
 	const [success_text, set_success_text] = useState("");
@@ -128,34 +128,32 @@ export default function HomePage() {
 	}, [drafts, selected_item]);
 
 
+	const request_item_page = async (signal: AbortSignal) => {
+		const parsed_limit = Number(limit_text);
+		const parsed_offset = Number(offset_text);
+		if (!Number.isInteger(parsed_limit) || parsed_limit < 1 || parsed_limit > 200) {
+			throw new Error("limit must be an integer between 1 and 200");
+		}
+		if (!Number.isInteger(parsed_offset) || parsed_offset < 0 || parsed_offset > 1_000_000_000) {
+			throw new Error("offset must be an integer between 0 and 1000000000");
+		}
+
+		const project_filter = project_filter_text === "all" || project_filter_text === "none"
+			? undefined : Number(project_filter_text);
+		return list_items({
+			status: status_filter === "all" ? undefined : status_filter,
+			project_id: project_filter,
+			limit: parsed_limit,
+			offset: parsed_offset
+		}, signal);
+	};
+
 	const load_items = async () => {
 		active_list.current?.abort();
 		const controller = new AbortController();
 		active_list.current = controller;
-		set_is_loading(true);
-		set_error_text("");
-
 		try {
-			const parsed_limit = Number(limit_text);
-			const parsed_offset = Number(offset_text);
-			if (!Number.isFinite(parsed_limit) || parsed_limit < 1) {
-				throw new Error("limit must be a number greater than 0");
-			}
-			if (!Number.isFinite(parsed_offset) || parsed_offset < 0) {
-				throw new Error("offset must be a number greater than or equal to 0");
-			}
-
-			const project_filter =
-				project_filter_text === "all" || project_filter_text === "none"
-					? undefined
-					: Number(project_filter_text);
-
-			const response = await list_items({
-				status: status_filter === "all" ? undefined : status_filter,
-				project_id: typeof project_filter === "number" ? project_filter : undefined,
-				limit: parsed_limit,
-				offset: parsed_offset
-			}, controller.signal);
+			const response = await request_item_page(controller.signal);
 			if (controller.signal.aborted) {
 				return;
 			}
@@ -193,6 +191,12 @@ export default function HomePage() {
 				set_is_loading(false);
 			}
 		}
+	};
+
+	const refresh_items = () => {
+		set_is_loading(true);
+		set_error_text("");
+		return load_items();
 	};
 
 	useEffect(() => {
@@ -248,7 +252,7 @@ export default function HomePage() {
 			set_create_status("draft");
 			set_create_project_id_text("none");
 			set_success_text("Created item #" + String(created.id));
-			await load_items();
+			await refresh_items();
 			set_selected_item_id(created.id);
 		} catch (err) {
 			set_error_text(err instanceof Error ? err.message : "Failed to create item");
@@ -334,7 +338,7 @@ export default function HomePage() {
 		try {
 			await delete_item(selected_item.id, normalized_auth_token.length > 0 ? normalized_auth_token : undefined, selected_item.updated_at);
 			set_success_text("Deleted item #" + String(selected_item.id));
-			await load_items();
+			await refresh_items();
 		} catch (err) {
 			set_error_text(err instanceof Error ? err.message : "Failed to delete item");
 		}
@@ -368,7 +372,7 @@ export default function HomePage() {
 					<button type="button" className="secondary" onClick={save_auth_token}>
 						Save Token
 					</button>
-					<button type="button" className="secondary" onClick={() => void load_items()} disabled={is_loading}>
+					<button type="button" className="secondary" onClick={() => void refresh_items()} disabled={is_loading}>
 						{is_loading ? "Refreshing..." : "Refresh List"}
 					</button>
 				</div>
