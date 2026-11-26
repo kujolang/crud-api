@@ -148,12 +148,11 @@ export default function HomePage() {
 		}, signal);
 	};
 
-	const load_items = async () => {
+	const load_items = () => {
 		active_list.current?.abort();
 		const controller = new AbortController();
 		active_list.current = controller;
-		try {
-			const response = await request_item_page(controller.signal);
+		return request_item_page(controller.signal).then((response) => {
 			if (controller.signal.aborted) {
 				return;
 			}
@@ -181,16 +180,16 @@ export default function HomePage() {
 				}
 				return null;
 			});
-		} catch (err) {
+		}).catch((err: unknown) => {
 			if (!controller.signal.aborted) {
 				set_error_text(err instanceof Error ? err.message : "Failed to load items");
 			}
-		} finally {
+		}).finally(() => {
 			if (active_list.current === controller) {
 				active_list.current = null;
 				set_is_loading(false);
 			}
-		}
+		});
 	};
 
 	const refresh_items = () => {
